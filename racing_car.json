@@ -1,0 +1,18 @@
+{
+    "max_speed": 1000,
+    "max_speed_desc": "최대 속도. 너무 빠르면 컨트롤 어려움. 이니셜D 스타일은 800-1000 추천",
+    "acceleration_force": 600,
+    "acceleration_force_desc": "가속력. 드리프트 진입을 위해 빠른 가속 필요. 500-700 추천",
+    "friction": 0.99,
+    "friction_desc": "공기저항. 1에 가까울수록 속도 유지. 드리프트 중 속도 유지를 위해 0.99+ 추천",
+    "lateral_friction": 0.85,
+    "lateral_friction_desc": "일반 주행 시 측면 그립. 0.8-0.9가 적당. 너무 높으면 드리프트 진입 어려움",
+    "turn_speed": 4,
+    "turn_speed_desc": "회전 속도. 카운터 스티어링에 반응하기 위해 3.5-4.5 추천",
+    "drift_friction": 0.1,
+    "drift_friction_desc": "드리프트 중 측면 마찰. 낮을수록 많이 미끄러짐! 0.05-0.15 추천. 이니셜D는 0.08-0.12",
+    "brake_factor": 0.98,
+    "brake_factor_desc": "브레이크 효율. 드리프트 시스템에서는 크게 중요하지 않음",
+    "sensor_range": 300,
+    "sensor_range_desc": "AI 센서 범위"
+  }

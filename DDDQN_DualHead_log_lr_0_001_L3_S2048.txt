@@ -1,0 +1,138 @@
+[2026-01-12 01:43:17] ============================================================
+[2026-01-12 01:43:17] 🚀 DUELING DOUBLE DQN + DUAL HEAD TRAINING
+[2026-01-12 01:43:17]    Device: cuda
+[2026-01-12 01:43:17]    Action Size: 8, Duration Size: 6
+[2026-01-12 01:43:17]    Loss: action_loss + 0.2 * duration_loss
+[2026-01-12 01:43:17]    Layer: 3, MaxSize: 2048, LR: 0.001
+[2026-01-12 01:43:17]    Log File: DDDQN_DualHead_log_lr_0_001_L3_S2048.txt
+[2026-01-12 01:43:17] ============================================================
+[2026-01-12 01:43:19] 
+📊 Training started at 01:43:19
+[2026-01-12 01:43:19] ------------------------------------------------------------
+[2026-01-12 01:43:21] [Ep   100] Goal:   0 | Seg: 0 | ε: 0.852 | Reward:   -203.8 | A_Loss: 0.000 | D_Loss: 0.000 | Speed: 50.7 ep/s | Avg Speed:  37.52 km/h | Time: 01:43:21
+[2026-01-12 01:43:24] [Ep   200] Goal:   0 | Seg: 0 | ε: 0.724 | Reward:   -205.3 | A_Loss: 42.492 | D_Loss: 41.656 | Speed: 28.8 ep/s | Avg Speed:  37.22 km/h | Time: 01:43:24
+[2026-01-12 01:43:27] 
+★★★ Segment 0 학습 완료! (Episode: 260) ★★★
+
+[2026-01-12 01:43:28] [Ep   300] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -200.8 | A_Loss: 32.915 | D_Loss: 32.411 | Speed: 27.6 ep/s | Avg Speed:  40.44 km/h | Time: 01:43:28
+[2026-01-12 01:43:31] [Ep   400] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -205.1 | A_Loss: 30.064 | D_Loss: 29.911 | Speed: 31.2 ep/s | Avg Speed:  39.07 km/h | Time: 01:43:31
+[2026-01-12 01:43:34] [Ep   500] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -203.2 | A_Loss: 29.125 | D_Loss: 29.104 | Speed: 29.8 ep/s | Avg Speed:  42.32 km/h | Time: 01:43:34
+[2026-01-12 01:43:38] [Ep   600] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -201.5 | A_Loss: 27.047 | D_Loss: 27.114 | Speed: 29.1 ep/s | Avg Speed:  44.79 km/h | Time: 01:43:38
+[2026-01-12 01:43:41] [Ep   700] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -199.7 | A_Loss: 26.634 | D_Loss: 26.766 | Speed: 27.9 ep/s | Avg Speed:  44.45 km/h | Time: 01:43:41
+[2026-01-12 01:43:45] [Ep   800] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -203.9 | A_Loss: 25.985 | D_Loss: 26.184 | Speed: 29.3 ep/s | Avg Speed:  41.13 km/h | Time: 01:43:45
+[2026-01-12 01:43:48] [Ep   900] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -205.9 | A_Loss: 26.036 | D_Loss: 26.355 | Speed: 31.5 ep/s | Avg Speed:  37.84 km/h | Time: 01:43:48
+[2026-01-12 01:43:51] [Ep  1000] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -205.5 | A_Loss: 25.737 | D_Loss: 26.036 | Speed: 33.4 ep/s | Avg Speed:  38.29 km/h | Time: 01:43:51
+[2026-01-12 01:43:54] [Ep  1100] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -205.7 | A_Loss: 25.790 | D_Loss: 26.189 | Speed: 30.5 ep/s | Avg Speed:  38.43 km/h | Time: 01:43:54
+[2026-01-12 01:43:58] [Ep  1200] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -204.5 | A_Loss: 25.151 | D_Loss: 25.591 | Speed: 30.8 ep/s | Avg Speed:  38.94 km/h | Time: 01:43:58
+[2026-01-12 01:44:02] [Ep  1300] Goal:   0 | Seg: 1 | ε: 0.806 | Reward:   -180.2 | A_Loss: 25.302 | D_Loss: 25.575 | Speed: 22.0 ep/s | Avg Speed:  55.72 km/h | Time: 01:44:02
+[2026-01-12 01:44:08] [Ep  1400] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -139.5 | A_Loss: 23.408 | D_Loss: 23.940 | Speed: 16.1 ep/s | Avg Speed:  71.51 km/h | Time: 01:44:08
+[2026-01-12 01:44:12] [Ep  1500] Goal:   0 | Seg: 1 | ε: 0.626 | Reward:   -178.9 | A_Loss: 25.888 | D_Loss: 25.897 | Speed: 27.1 ep/s | Avg Speed:  57.38 km/h | Time: 01:44:12
+[2026-01-12 01:44:16] [Ep  1600] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -155.7 | A_Loss: 27.447 | D_Loss: 27.160 | Speed: 25.1 ep/s | Avg Speed:  65.83 km/h | Time: 01:44:16
+[2026-01-12 01:44:20] [Ep  1700] Goal:   0 | Seg: 1 | ε: 0.450 | Reward:   -157.2 | A_Loss: 26.929 | D_Loss: 26.635 | Speed: 25.1 ep/s | Avg Speed:  66.91 km/h | Time: 01:44:20
+[2026-01-12 01:44:24] [Ep  1800] Goal:   0 | Seg: 1 | ε: 0.382 | Reward:   -157.2 | A_Loss: 25.378 | D_Loss: 25.515 | Speed: 23.2 ep/s | Avg Speed:  66.37 km/h | Time: 01:44:24
+[2026-01-12 01:44:28] [Ep  1900] Goal:   0 | Seg: 1 | ε: 0.323 | Reward:   -156.4 | A_Loss: 25.637 | D_Loss: 25.730 | Speed: 23.9 ep/s | Avg Speed:  66.97 km/h | Time: 01:44:28
+[2026-01-12 01:44:33] [Ep  2000] Goal:   0 | Seg: 1 | ε: 0.269 | Reward:   -153.1 | A_Loss: 26.049 | D_Loss: 25.995 | Speed: 24.3 ep/s | Avg Speed:  68.00 km/h | Time: 01:44:33
+[2026-01-12 01:44:37] [Ep  2100] Goal:   0 | Seg: 1 | ε: 0.228 | Reward:   -154.4 | A_Loss: 25.949 | D_Loss: 25.907 | Speed: 24.6 ep/s | Avg Speed:  66.90 km/h | Time: 01:44:37
+[2026-01-12 01:44:41] [Ep  2200] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -158.5 | A_Loss: 26.057 | D_Loss: 26.025 | Speed: 24.5 ep/s | Avg Speed:  66.43 km/h | Time: 01:44:41
+[2026-01-12 01:44:45] [Ep  2300] Goal:   0 | Seg: 1 | ε: 0.162 | Reward:   -151.5 | A_Loss: 26.677 | D_Loss: 26.637 | Speed: 24.0 ep/s | Avg Speed:  68.14 km/h | Time: 01:44:45
+[2026-01-12 01:44:49] [Ep  2400] Goal:   0 | Seg: 1 | ε: 0.135 | Reward:   -151.5 | A_Loss: 27.231 | D_Loss: 27.206 | Speed: 24.7 ep/s | Avg Speed:  67.34 km/h | Time: 01:44:49
+[2026-01-12 01:44:53] [Ep  2500] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -155.2 | A_Loss: 26.800 | D_Loss: 26.771 | Speed: 24.5 ep/s | Avg Speed:  68.01 km/h | Time: 01:44:53
+[2026-01-12 01:44:57] [Ep  2600] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -153.7 | A_Loss: 27.122 | D_Loss: 27.103 | Speed: 24.3 ep/s | Avg Speed:  67.23 km/h | Time: 01:44:57
+[2026-01-12 01:45:01] [Ep  2700] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.9 | A_Loss: 27.328 | D_Loss: 27.309 | Speed: 24.1 ep/s | Avg Speed:  66.44 km/h | Time: 01:45:01
+[2026-01-12 01:45:05] [Ep  2800] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.4 | A_Loss: 27.060 | D_Loss: 27.047 | Speed: 24.7 ep/s | Avg Speed:  66.39 km/h | Time: 01:45:05
+[2026-01-12 01:45:09] [Ep  2900] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -158.1 | A_Loss: 27.243 | D_Loss: 27.225 | Speed: 24.4 ep/s | Avg Speed:  65.56 km/h | Time: 01:45:09
+[2026-01-12 01:45:14] [Ep  3000] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.4 | A_Loss: 27.556 | D_Loss: 27.537 | Speed: 24.7 ep/s | Avg Speed:  66.38 km/h | Time: 01:45:14
+[2026-01-12 01:45:18] [Ep  3100] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.4 | A_Loss: 27.431 | D_Loss: 27.413 | Speed: 24.0 ep/s | Avg Speed:  67.41 km/h | Time: 01:45:18
+[2026-01-12 01:45:22] [Ep  3200] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -153.0 | A_Loss: 28.200 | D_Loss: 28.189 | Speed: 24.8 ep/s | Avg Speed:  67.60 km/h | Time: 01:45:22
+[2026-01-12 01:45:26] [Ep  3300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -153.3 | A_Loss: 27.690 | D_Loss: 27.682 | Speed: 24.0 ep/s | Avg Speed:  67.07 km/h | Time: 01:45:26
+[2026-01-12 01:45:30] [Ep  3400] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.9 | A_Loss: 27.696 | D_Loss: 27.683 | Speed: 24.3 ep/s | Avg Speed:  67.91 km/h | Time: 01:45:30
+[2026-01-12 01:45:34] [Ep  3500] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -152.3 | A_Loss: 28.055 | D_Loss: 28.050 | Speed: 24.3 ep/s | Avg Speed:  67.35 km/h | Time: 01:45:34
+[2026-01-12 01:45:38] [Ep  3600] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -154.3 | A_Loss: 28.577 | D_Loss: 28.568 | Speed: 24.4 ep/s | Avg Speed:  67.99 km/h | Time: 01:45:38
+[2026-01-12 01:45:42] [Ep  3700] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.3 | A_Loss: 28.261 | D_Loss: 28.256 | Speed: 24.5 ep/s | Avg Speed:  66.81 km/h | Time: 01:45:42
+[2026-01-12 01:45:46] [Ep  3800] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.4 | A_Loss: 28.157 | D_Loss: 28.151 | Speed: 24.4 ep/s | Avg Speed:  67.33 km/h | Time: 01:45:46
+[2026-01-12 01:45:51] [Ep  3900] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.6 | A_Loss: 27.943 | D_Loss: 27.941 | Speed: 24.4 ep/s | Avg Speed:  67.92 km/h | Time: 01:45:51
+[2026-01-12 01:45:55] [Ep  4000] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -159.5 | A_Loss: 28.640 | D_Loss: 28.639 | Speed: 24.7 ep/s | Avg Speed:  66.93 km/h | Time: 01:45:55
+[2026-01-12 01:45:59] [Ep  4100] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -156.4 | A_Loss: 28.088 | D_Loss: 28.086 | Speed: 24.2 ep/s | Avg Speed:  67.00 km/h | Time: 01:45:59
+[2026-01-12 01:46:03] [Ep  4200] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -152.8 | A_Loss: 28.611 | D_Loss: 28.610 | Speed: 23.5 ep/s | Avg Speed:  68.34 km/h | Time: 01:46:03
+[2026-01-12 01:46:07] [Ep  4300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -153.5 | A_Loss: 28.545 | D_Loss: 28.551 | Speed: 24.9 ep/s | Avg Speed:  67.70 km/h | Time: 01:46:07
+[2026-01-12 01:46:11] [Ep  4400] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -156.5 | A_Loss: 28.751 | D_Loss: 28.746 | Speed: 24.7 ep/s | Avg Speed:  66.73 km/h | Time: 01:46:11
+[2026-01-12 01:46:15] [Ep  4500] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -156.0 | A_Loss: 28.654 | D_Loss: 28.669 | Speed: 24.5 ep/s | Avg Speed:  66.81 km/h | Time: 01:46:15
+[2026-01-12 01:46:19] [Ep  4600] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.4 | A_Loss: 28.812 | D_Loss: 28.808 | Speed: 24.9 ep/s | Avg Speed:  66.14 km/h | Time: 01:46:19
+[2026-01-12 01:46:23] [Ep  4700] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -157.5 | A_Loss: 28.728 | D_Loss: 28.753 | Speed: 24.5 ep/s | Avg Speed:  66.92 km/h | Time: 01:46:23
+[2026-01-12 01:46:27] [Ep  4800] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -151.2 | A_Loss: 29.492 | D_Loss: 29.513 | Speed: 23.9 ep/s | Avg Speed:  68.56 km/h | Time: 01:46:27
+[2026-01-12 01:46:31] [Ep  4900] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.2 | A_Loss: 28.853 | D_Loss: 28.863 | Speed: 24.5 ep/s | Avg Speed:  66.25 km/h | Time: 01:46:31
+[2026-01-12 01:46:36] [Ep  5000] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -156.5 | A_Loss: 29.198 | D_Loss: 29.228 | Speed: 24.4 ep/s | Avg Speed:  66.58 km/h | Time: 01:46:36
+[2026-01-12 01:46:40] [Ep  5100] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -159.3 | A_Loss: 29.441 | D_Loss: 29.456 | Speed: 24.6 ep/s | Avg Speed:  66.13 km/h | Time: 01:46:40
+[2026-01-12 01:46:44] [Ep  5200] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.5 | A_Loss: 28.974 | D_Loss: 28.995 | Speed: 24.4 ep/s | Avg Speed:  67.64 km/h | Time: 01:46:44
+[2026-01-12 01:46:48] [Ep  5300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.5 | A_Loss: 28.979 | D_Loss: 29.021 | Speed: 24.1 ep/s | Avg Speed:  66.83 km/h | Time: 01:46:48
+[2026-01-12 01:46:52] [Ep  5400] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -156.6 | A_Loss: 29.134 | D_Loss: 29.191 | Speed: 24.6 ep/s | Avg Speed:  67.27 km/h | Time: 01:46:52
+[2026-01-12 01:46:56] [Ep  5500] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -161.4 | A_Loss: 29.477 | D_Loss: 29.534 | Speed: 24.6 ep/s | Avg Speed:  66.26 km/h | Time: 01:46:56
+[2026-01-12 01:47:00] [Ep  5600] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -158.4 | A_Loss: 29.398 | D_Loss: 29.448 | Speed: 24.6 ep/s | Avg Speed:  66.91 km/h | Time: 01:47:00
+[2026-01-12 01:47:04] [Ep  5700] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -160.2 | A_Loss: 29.611 | D_Loss: 29.670 | Speed: 24.1 ep/s | Avg Speed:  66.61 km/h | Time: 01:47:04
+[2026-01-12 01:47:08] [Ep  5800] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -156.6 | A_Loss: 29.292 | D_Loss: 29.349 | Speed: 24.6 ep/s | Avg Speed:  66.87 km/h | Time: 01:47:08
+[2026-01-12 01:47:12] [Ep  5900] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -153.2 | A_Loss: 29.191 | D_Loss: 29.244 | Speed: 24.0 ep/s | Avg Speed:  67.39 km/h | Time: 01:47:12
+[2026-01-12 01:47:17] [Ep  6000] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.0 | A_Loss: 29.142 | D_Loss: 29.197 | Speed: 24.3 ep/s | Avg Speed:  67.63 km/h | Time: 01:47:17
+[2026-01-12 01:47:21] [Ep  6100] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.5 | A_Loss: 28.788 | D_Loss: 28.835 | Speed: 24.6 ep/s | Avg Speed:  66.59 km/h | Time: 01:47:21
+[2026-01-12 01:47:25] [Ep  6200] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.7 | A_Loss: 29.660 | D_Loss: 29.702 | Speed: 25.1 ep/s | Avg Speed:  67.65 km/h | Time: 01:47:25
+[2026-01-12 01:47:29] [Ep  6300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -158.8 | A_Loss: 29.677 | D_Loss: 29.720 | Speed: 25.9 ep/s | Avg Speed:  65.95 km/h | Time: 01:47:29
+[2026-01-12 01:47:32] [Ep  6400] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -156.0 | A_Loss: 29.122 | D_Loss: 29.174 | Speed: 26.1 ep/s | Avg Speed:  66.70 km/h | Time: 01:47:32
+[2026-01-12 01:47:36] [Ep  6500] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -156.5 | A_Loss: 29.295 | D_Loss: 29.352 | Speed: 26.5 ep/s | Avg Speed:  67.97 km/h | Time: 01:47:36
+[2026-01-12 01:47:40] [Ep  6600] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.0 | A_Loss: 29.683 | D_Loss: 29.722 | Speed: 26.3 ep/s | Avg Speed:  67.35 km/h | Time: 01:47:40
+[2026-01-12 01:47:44] [Ep  6700] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -156.9 | A_Loss: 29.527 | D_Loss: 29.572 | Speed: 26.2 ep/s | Avg Speed:  67.33 km/h | Time: 01:47:44
+[2026-01-12 01:47:47] [Ep  6800] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -159.1 | A_Loss: 29.904 | D_Loss: 29.958 | Speed: 26.7 ep/s | Avg Speed:  66.24 km/h | Time: 01:47:47
+[2026-01-12 01:47:52] [Ep  6900] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.7 | A_Loss: 29.595 | D_Loss: 29.653 | Speed: 24.6 ep/s | Avg Speed:  67.39 km/h | Time: 01:47:52
+[2026-01-12 01:47:56] [Ep  7000] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -156.4 | A_Loss: 29.420 | D_Loss: 29.466 | Speed: 24.2 ep/s | Avg Speed:  67.23 km/h | Time: 01:47:56
+[2026-01-12 01:48:00] [Ep  7100] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -152.8 | A_Loss: 29.746 | D_Loss: 29.798 | Speed: 23.9 ep/s | Avg Speed:  67.55 km/h | Time: 01:48:00
+[2026-01-12 01:48:04] [Ep  7200] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.9 | A_Loss: 29.620 | D_Loss: 29.669 | Speed: 24.2 ep/s | Avg Speed:  67.27 km/h | Time: 01:48:04
+[2026-01-12 01:48:08] [Ep  7300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.6 | A_Loss: 29.246 | D_Loss: 29.300 | Speed: 24.2 ep/s | Avg Speed:  67.00 km/h | Time: 01:48:08
+[2026-01-12 01:48:12] [Ep  7400] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -158.7 | A_Loss: 29.491 | D_Loss: 29.537 | Speed: 24.3 ep/s | Avg Speed:  65.67 km/h | Time: 01:48:12
+[2026-01-12 01:48:16] [Ep  7500] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.6 | A_Loss: 29.766 | D_Loss: 29.812 | Speed: 25.1 ep/s | Avg Speed:  67.55 km/h | Time: 01:48:16
+[2026-01-12 01:48:20] [Ep  7600] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -156.9 | A_Loss: 30.133 | D_Loss: 30.182 | Speed: 24.2 ep/s | Avg Speed:  66.51 km/h | Time: 01:48:20
+[2026-01-12 01:48:24] [Ep  7700] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.5 | A_Loss: 29.680 | D_Loss: 29.716 | Speed: 24.6 ep/s | Avg Speed:  67.66 km/h | Time: 01:48:24
+[2026-01-12 01:48:29] [Ep  7800] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.2 | A_Loss: 29.964 | D_Loss: 30.002 | Speed: 24.2 ep/s | Avg Speed:  67.62 km/h | Time: 01:48:29
+[2026-01-12 01:48:33] [Ep  7900] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.1 | A_Loss: 29.876 | D_Loss: 29.911 | Speed: 24.7 ep/s | Avg Speed:  66.93 km/h | Time: 01:48:33
+[2026-01-12 01:48:37] [Ep  8000] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -157.4 | A_Loss: 29.413 | D_Loss: 29.446 | Speed: 24.2 ep/s | Avg Speed:  66.37 km/h | Time: 01:48:37
+[2026-01-12 01:48:41] [Ep  8100] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -156.4 | A_Loss: 29.983 | D_Loss: 30.001 | Speed: 24.3 ep/s | Avg Speed:  66.41 km/h | Time: 01:48:41
+[2026-01-12 01:48:45] [Ep  8200] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.9 | A_Loss: 30.222 | D_Loss: 30.236 | Speed: 23.1 ep/s | Avg Speed:  66.38 km/h | Time: 01:48:45
+[2026-01-12 01:48:49] [Ep  8300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.0 | A_Loss: 29.624 | D_Loss: 29.639 | Speed: 24.1 ep/s | Avg Speed:  67.49 km/h | Time: 01:48:49
+[2026-01-12 01:48:53] [Ep  8400] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -160.0 | A_Loss: 29.751 | D_Loss: 29.779 | Speed: 24.2 ep/s | Avg Speed:  66.89 km/h | Time: 01:48:53
+[2026-01-12 01:48:58] [Ep  8500] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.4 | A_Loss: 29.230 | D_Loss: 29.259 | Speed: 24.4 ep/s | Avg Speed:  66.33 km/h | Time: 01:48:58
+[2026-01-12 01:49:02] [Ep  8600] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -155.9 | A_Loss: 29.533 | D_Loss: 29.551 | Speed: 24.3 ep/s | Avg Speed:  66.29 km/h | Time: 01:49:02
+[2026-01-12 01:49:06] [Ep  8700] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -156.9 | A_Loss: 29.827 | D_Loss: 29.844 | Speed: 24.3 ep/s | Avg Speed:  66.39 km/h | Time: 01:49:06
+[2026-01-12 01:49:10] [Ep  8800] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.6 | A_Loss: 29.843 | D_Loss: 29.859 | Speed: 24.1 ep/s | Avg Speed:  67.48 km/h | Time: 01:49:10
+[2026-01-12 01:49:14] [Ep  8900] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.5 | A_Loss: 29.783 | D_Loss: 29.783 | Speed: 23.9 ep/s | Avg Speed:  66.40 km/h | Time: 01:49:14
+[2026-01-12 01:49:18] [Ep  9000] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.3 | A_Loss: 29.991 | D_Loss: 29.993 | Speed: 23.4 ep/s | Avg Speed:  67.12 km/h | Time: 01:49:18
+[2026-01-12 01:49:23] [Ep  9100] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -158.8 | A_Loss: 30.376 | D_Loss: 30.373 | Speed: 24.0 ep/s | Avg Speed:  66.67 km/h | Time: 01:49:23
+[2026-01-12 01:49:27] [Ep  9200] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -151.3 | A_Loss: 30.471 | D_Loss: 30.467 | Speed: 24.1 ep/s | Avg Speed:  67.06 km/h | Time: 01:49:27
+[2026-01-12 01:49:31] [Ep  9300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -158.3 | A_Loss: 30.116 | D_Loss: 30.112 | Speed: 24.2 ep/s | Avg Speed:  67.15 km/h | Time: 01:49:31
+[2026-01-12 01:49:35] [Ep  9400] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -151.9 | A_Loss: 30.200 | D_Loss: 30.199 | Speed: 23.9 ep/s | Avg Speed:  67.95 km/h | Time: 01:49:35
+[2026-01-12 01:49:39] [Ep  9500] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.6 | A_Loss: 30.115 | D_Loss: 30.111 | Speed: 24.2 ep/s | Avg Speed:  66.97 km/h | Time: 01:49:39
+[2026-01-12 01:49:43] [Ep  9600] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -152.3 | A_Loss: 30.126 | D_Loss: 30.119 | Speed: 23.8 ep/s | Avg Speed:  67.72 km/h | Time: 01:49:43
+[2026-01-12 01:49:48] [Ep  9700] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.2 | A_Loss: 29.655 | D_Loss: 29.639 | Speed: 23.9 ep/s | Avg Speed:  66.58 km/h | Time: 01:49:48
+[2026-01-12 01:49:52] [Ep  9800] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -158.4 | A_Loss: 30.549 | D_Loss: 30.537 | Speed: 24.1 ep/s | Avg Speed:  64.97 km/h | Time: 01:49:52
+[2026-01-12 01:49:56] [Ep  9900] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -153.4 | A_Loss: 30.014 | D_Loss: 29.994 | Speed: 24.0 ep/s | Avg Speed:  67.48 km/h | Time: 01:49:56
+[2026-01-12 01:50:00] [Ep 10000] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -158.1 | A_Loss: 30.154 | D_Loss: 30.124 | Speed: 24.0 ep/s | Avg Speed:  67.06 km/h | Time: 01:50:00
+[2026-01-12 01:50:04] [Ep 10100] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.9 | A_Loss: 30.191 | D_Loss: 30.163 | Speed: 24.2 ep/s | Avg Speed:  67.12 km/h | Time: 01:50:04
+[2026-01-12 01:50:08] [Ep 10200] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.6 | A_Loss: 30.015 | D_Loss: 29.971 | Speed: 24.2 ep/s | Avg Speed:  67.94 km/h | Time: 01:50:08
+[2026-01-12 01:50:12] [Ep 10300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -157.0 | A_Loss: 30.068 | D_Loss: 30.033 | Speed: 24.1 ep/s | Avg Speed:  67.33 km/h | Time: 01:50:12
+[2026-01-12 01:50:17] [Ep 10400] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -158.0 | A_Loss: 30.263 | D_Loss: 30.226 | Speed: 23.7 ep/s | Avg Speed:  66.82 km/h | Time: 01:50:17
+[2026-01-12 01:50:21] [Ep 10500] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -151.1 | A_Loss: 29.883 | D_Loss: 29.843 | Speed: 24.6 ep/s | Avg Speed:  68.70 km/h | Time: 01:50:21
+[2026-01-12 01:50:25] [Ep 10600] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.2 | A_Loss: 30.062 | D_Loss: 30.019 | Speed: 23.9 ep/s | Avg Speed:  68.09 km/h | Time: 01:50:25
+[2026-01-12 01:50:29] [Ep 10700] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.4 | A_Loss: 30.479 | D_Loss: 30.432 | Speed: 23.6 ep/s | Avg Speed:  67.98 km/h | Time: 01:50:29
+[2026-01-12 01:50:33] [Ep 10800] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -159.3 | A_Loss: 30.085 | D_Loss: 30.037 | Speed: 24.1 ep/s | Avg Speed:  66.02 km/h | Time: 01:50:33
+[2026-01-12 01:50:37] [Ep 10900] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -159.4 | A_Loss: 30.392 | D_Loss: 30.353 | Speed: 24.0 ep/s | Avg Speed:  66.33 km/h | Time: 01:50:37
+[2026-01-12 01:50:42] [Ep 11000] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -154.6 | A_Loss: 30.337 | D_Loss: 30.296 | Speed: 24.2 ep/s | Avg Speed:  67.70 km/h | Time: 01:50:42
+[2026-01-12 01:50:46] [Ep 11100] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -156.0 | A_Loss: 30.115 | D_Loss: 30.071 | Speed: 24.3 ep/s | Avg Speed:  66.53 km/h | Time: 01:50:46
+[2026-01-12 01:50:50] [Ep 11200] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -150.1 | A_Loss: 30.195 | D_Loss: 30.138 | Speed: 23.6 ep/s | Avg Speed:  67.93 km/h | Time: 01:50:50
+[2026-01-12 01:50:54] [Ep 11300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -149.0 | A_Loss: 30.634 | D_Loss: 30.579 | Speed: 23.5 ep/s | Avg Speed:  69.57 km/h | Time: 01:50:54
+[2026-01-12 01:50:58] [Ep 11400] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -152.5 | A_Loss: 30.079 | D_Loss: 30.026 | Speed: 24.0 ep/s | Avg Speed:  68.05 km/h | Time: 01:50:58
+[2026-01-12 01:51:02] [Ep 11500] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.9 | A_Loss: 30.319 | D_Loss: 30.269 | Speed: 24.7 ep/s | Avg Speed:  65.87 km/h | Time: 01:51:02
+[2026-01-12 01:51:07] [Ep 11600] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -155.9 | A_Loss: 29.952 | D_Loss: 29.910 | Speed: 24.0 ep/s | Avg Speed:  66.93 km/h | Time: 01:51:07
+[2026-01-12 01:51:11] [Ep 11700] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.0 | A_Loss: 30.157 | D_Loss: 30.107 | Speed: 24.0 ep/s | Avg Speed:  67.30 km/h | Time: 01:51:11
+[2026-01-12 01:51:15] [Ep 11800] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -155.4 | A_Loss: 30.914 | D_Loss: 30.856 | Speed: 23.9 ep/s | Avg Speed:  67.35 km/h | Time: 01:51:15
+[2026-01-12 01:51:19] [Ep 11900] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -158.5 | A_Loss: 30.104 | D_Loss: 30.047 | Speed: 23.8 ep/s | Avg Speed:  67.26 km/h | Time: 01:51:19
+[2026-01-12 01:51:23] [Ep 12000] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.2 | A_Loss: 30.671 | D_Loss: 30.607 | Speed: 23.9 ep/s | Avg Speed:  67.67 km/h | Time: 01:51:23
+[2026-01-12 01:51:27] [Ep 12100] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -153.7 | A_Loss: 30.119 | D_Loss: 30.057 | Speed: 23.9 ep/s | Avg Speed:  67.22 km/h | Time: 01:51:27
+[2026-01-12 01:51:32] [Ep 12200] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -154.6 | A_Loss: 30.841 | D_Loss: 30.772 | Speed: 23.8 ep/s | Avg Speed:  68.63 km/h | Time: 01:51:32
+[2026-01-12 01:51:36] [Ep 12300] Goal:   0 | Seg: 1 | ε: 0.100 | Reward:   -153.6 | A_Loss: 30.266 | D_Loss: 30.198 | Speed: 23.8 ep/s | Avg Speed:  66.91 km/h | Time: 01:51:36
+[2026-01-12 01:51:40] [Ep 12400] Goal:   0 | Seg: 0 | ε: 0.100 | Reward:   -154.5 | A_Loss: 30.951 | D_Loss: 30.864 | Speed: 23.8 ep/s | Avg Speed:  67.64 km/h | Time: 01:51:40
