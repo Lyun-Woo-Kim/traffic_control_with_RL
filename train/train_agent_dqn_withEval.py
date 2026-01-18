@@ -635,7 +635,7 @@ def train_headless(max_episode=10000, output_size=6, replay_length=100000,
             if result['is_goal']:
                 goal_counts += 1
                 goal_time = result['curr_time'] / 1000
-                log_and_print(f"  ✓ GOAL! Episode {episode}, Avg Speed {np.mean(all_speed_list)}km/h), Total Goals: {goal_counts}")
+                log_and_print(f"  ✓ GOAL! Episode {episode}, Avg Speed: {np.mean(all_speed_list) * game.car.max_speed * 0.36: .2f} km/h, Total Goals: {goal_counts}")
                 
                 # [변경] 모델 평가 및 저장 로직
                 if goal_counts > 50:
@@ -646,7 +646,7 @@ def train_headless(max_episode=10000, output_size=6, replay_length=100000,
                     )
                     
                     if all_success:
-                        log_and_print(f"  ✅ Evaluation: {success_count}/10 success, Avg Speed {np.mean(all_speed_list)}km/h)")
+                        log_and_print(f"  ✅ Evaluation: {success_count}/10 success, Avg Speed: {np.mean(all_speed_list) * game.car.max_speed * 0.36: .2f} km/h")
                         
                         # if avg_speed < best_avg_speed:
                         if avg_speed > best_avg_speed: 
@@ -661,7 +661,7 @@ def train_headless(max_episode=10000, output_size=6, replay_length=100000,
                             save_episode = episode
                             save_path = f"{os.path.join(current_dir, '..')}/example_models/dqn_best_lr_{lr_str}_L{layer_num}_S{max_size}_E{save_episode}_T{str(round(best_avg_speed, 3)).replace('.', '_')}.pth"
                             torch.save(policy_net.model.state_dict(), save_path)
-                            log_and_print(f"  💾 New best model saved! (Episode: {episode}, Avg Speed {np.mean(all_speed_list)}km/h))")
+                            log_and_print(f"  💾 New best model saved! (Episode: {episode}, Avg Speed: {np.mean(all_speed_list) * game.car.max_speed * 0.36: .2f} km/h)")
                             saved_counts = 0
                     else:
                         log_and_print(f"  ❌ Evaluation: {success_count}/10 success - Not saved")
@@ -695,9 +695,9 @@ def train_headless(max_episode=10000, output_size=6, replay_length=100000,
     log_and_print(f"   Algorithm: DQN")
     log_and_print(f"   Total Episodes: {episode}")
     log_and_print(f"   Total Goals: {goal_counts}")
-    log_and_print(f"   Best Avg Time: {best_avg_speed:.3f}s")
+    log_and_print(f"   Best Avg Speed: {best_avg_speed:.3f}km/h")
     log_and_print(f"   Training Time: {total_time/60:.1f} minutes")
-    log_and_print(f"   Average Speed: {episode/total_time:.1f} episodes/second")
+    log_and_print(f"   Average Traing Speed: {episode/total_time:.1f} episodes/second")
     log_and_print("=" * 60)
     
     log_file.close()

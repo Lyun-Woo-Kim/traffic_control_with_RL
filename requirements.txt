@@ -1,0 +1,28 @@
+# Deep Learning Framework
+torch>=1.9.0
+torchvision>=0.10.0
+
+# Game Engine
+pygame>=2.0.0
+
+# Numerical Computing
+numpy>=1.21.0
+
+# Data Analysis and Visualization
+matplotlib>=3.4.0
+
+# Standard library packages (no installation needed, listed for reference):
+# - json
+# - math
+# - random
+# - time
+# - os
+# - sys
+# - copy
+# - typing
+# - re
+
+# Optional: For better performance
+# CUDA toolkit (for GPU support) - install separately based on your system
+# See: https://pytorch.org/get-started/locally/
+

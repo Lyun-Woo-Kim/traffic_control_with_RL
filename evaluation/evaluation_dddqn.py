@@ -426,6 +426,8 @@ def evaluate_dueling_dqn(model_path, track_file, car_json_path, layer_num=3, max
                 ori_cp_idx = ori_checkpoints.index(reached_cp)
                 current_segment = ori_cp_idx + 1
                 standard_cp = ori_checkpoints[ori_cp_idx + 1] if ori_cp_idx < len(ori_checkpoints) - 1 else game.end_pos
+                dis_gap = math.dist([reached_cp[0], reached_cp[1]], 
+                                    [standard_cp[0], standard_cp[1]])
             
             # 종료 조건
             if step_done:
@@ -439,8 +441,8 @@ def evaluate_dueling_dqn(model_path, track_file, car_json_path, layer_num=3, max
             game._draw()
             
             # 추가 시각화
-            if show_sensors:
-                draw_sensors(game.screen, game, (game.camera_x, game.camera_y))
+            # if show_sensors:
+            #     draw_sensors(game.screen, game, (game.camera_x, game.camera_y))
             
             if show_values and current_q_values is not None:
                 draw_dueling_values(game.screen, current_value, current_advantage, 
@@ -507,7 +509,7 @@ def evaluate_dueling_dqn(model_path, track_file, car_json_path, layer_num=3, max
 
 if __name__ == "__main__":
     # 설정
-    MODEL_PATH = f"{os.path.join(current_dir, '..')}/example_models/dueling_double_dqn_best_lr_0_0003_L3_S1024_E80115_T131_435.pth"  # 모델 파일 경로
+    MODEL_PATH = f"{os.path.join(current_dir, '..')}/example_models/dddqn_best_lr_0_0003_L3_S1024_E65474_T134_761.pth"  # 모델 파일 경로
     TRACK_FILE = f"{os.path.join(current_dir, '..')}/env/track.json"
     CAR_JSON_PATH = f"{os.path.join(current_dir, '..')}/env/racing_car.json"
     

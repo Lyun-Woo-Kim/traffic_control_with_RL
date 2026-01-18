@@ -396,7 +396,7 @@ def execute_action_with_duration(game, agent, action, duration_frames, ori_check
         
         if timeout:
             is_timeout = True
-            cp_r = -5000
+            cp_r = -300
             done = True
         
         # 프레임별 보상 계산 및 누적
@@ -481,6 +481,8 @@ def evaluate_model(agent, game, ori_checkpoints, max_time, num_tests=10):
                     ori_cp_idx = ori_checkpoints.index(reached_cp)
                     current_segment = ori_cp_idx + 1
                     standard_cp = ori_checkpoints[ori_cp_idx + 1] if ori_cp_idx < len(ori_checkpoints) - 1 else game.end_pos
+                    dis_gap = math.dist([reached_cp[0], reached_cp[1]], 
+                                        [standard_cp[0], standard_cp[1]])
                 
                 if step_done:
                     if game.goal_reached:
@@ -490,7 +492,7 @@ def evaluate_model(agent, game, ori_checkpoints, max_time, num_tests=10):
                         is_collision = True
                         done = True
                 
-                # 타임아웃 체크
+                # 타임아웃 체크 (시뮬레이션 환경이므로 2로 조정, 더욱 복잡한 환경이라면 max_time 인자를 조절해서 변경해줘도 됨.)
                 if curr_time / 1000 > 2:
                     done = True
                     return False, 1000, 0
@@ -513,14 +515,17 @@ def evaluate_model(agent, game, ori_checkpoints, max_time, num_tests=10):
     
     return all_success, avg_speed, success_count
 
-
+# 학습 진행하는 함수
 def train_headless(max_episode=10000, action_size=8, duration_size=20, 
                    replay_length=100000, target_update=5000, log_interval=100, 
                    save_interval=1000, batch_size = 512, 
                    track_file="./track.json", 
                    car_json_path="./racing_car.json",
-                   layer_num=3, max_size=512, lr=0.0001):
-    """Dueling Double DQN + Dual Head 학습 함수"""
+                   layer_num=3, max_size=512, lr=0.0001,
+                   model_folder_path=f"{os.path.join(current_dir, '..')}/example_models/"):
+    if not os.path.exists(model_folder_path): 
+        os.makedirs(model_folder_path)
+        
     pygame.init()
     
     game = RacingGame(track_file, car_json_path=car_json_path, headless=True)
@@ -672,30 +677,30 @@ def train_headless(max_episode=10000, action_size=8, duration_size=20,
             if result['is_goal']:
                 goal_counts += 1
                 goal_time = result['curr_time'] / 1000
-                log_and_print(f"  ✓ GOAL! Episode {episode}, Avg Speed {np.mean(all_speed_list)}km/h), Total Goals: {goal_counts}")
+                log_and_print(f"  ✓ GOAL! Episode {episode}, Avg Speed: {np.mean(all_speed_list) * game.car.max_speed * 0.36: .2f} km/h, Total Goals: {goal_counts}")
                 
                 if goal_counts > 50:
-                    saved_counts += 1
                     log_and_print(f"  🔍 Evaluating model (10 tests)...")
                     all_success, avg_speed, success_count = evaluate_model(
                         policy_net, game, ori_checkpoints, max_time, num_tests=10
                     )
+                    saved_counts += 1
                     
                     if all_success:
-                        log_and_print(f"  ✅ Evaluation: {success_count}/10 success, Avg Speed {np.mean(all_speed_list)}km/h)")
+                        log_and_print(f"  ✅ Evaluation: {success_count}/10 success, Avg Speed: {np.mean(all_speed_list) * game.car.max_speed * 0.36: .2f} km/h")
                         
                         # if avg_speed < best_avg_speed:
                         if avg_speed > best_avg_speed: 
                             lr_str = str(lr).replace(".", "_")
-                            old_path = f"{os.path.join(current_dir, '..')}/example_models/dddqn_dualhead_best_lr_{lr_str}_L{layer_num}_S{max_size}_E{save_episode}_T{str(round(best_avg_speed, 3)).replace('.', '_')}.pth"
+                            old_path = f"{model_folder_path}/dddqn_dualhead_best_lr_{lr_str}_L{layer_num}_S{max_size}_E{save_episode}_T{str(round(best_avg_speed, 3)).replace('.', '_')}.pth"
                             if os.path.exists(old_path):
                                 os.remove(old_path)
                             
                             best_avg_speed = avg_speed
                             save_episode = episode
-                            save_path = f"{os.path.join(current_dir, '..')}/example_models/dddqn_dualhead_best_lr_{lr_str}_L{layer_num}_S{max_size}_E{save_episode}_T{str(round(best_avg_speed, 3)).replace('.', '_')}.pth"
+                            save_path = f"{model_folder_path}/dddqn_dualhead_best_lr_{lr_str}_L{layer_num}_S{max_size}_E{save_episode}_T{str(round(best_avg_speed, 3)).replace('.', '_')}.pth"
                             torch.save(policy_net.model.state_dict(), save_path)
-                            log_and_print(f"  💾 New best model saved! (Episode: {episode}, Avg Speed {np.mean(all_speed_list)}km/h))")
+                            log_and_print(f"  💾 New best model saved! (Episode: {episode}, Avg Speed: {np.mean(all_speed_list) * game.car.max_speed * 0.36: .2f} km/h)")
                             saved_counts = 0
                     else:
                         log_and_print(f"  ❌ Evaluation: {success_count}/10 success - Not saved")
@@ -730,9 +735,9 @@ def train_headless(max_episode=10000, action_size=8, duration_size=20,
     log_and_print(f"   Algorithm: Dueling Double DQN + Dual Head")
     log_and_print(f"   Total Episodes: {episode}")
     log_and_print(f"   Total Goals: {goal_counts}")
-    log_and_print(f"   Best Avg Time: {best_avg_speed:.3f}s")
+    log_and_print(f"   Best Avg Speed: {best_avg_speed:.3f}km/h")
     log_and_print(f"   Training Time: {total_time/60:.1f} minutes")
-    log_and_print(f"   Average Speed: {episode/total_time:.1f} episodes/second")
+    log_and_print(f"   Average Traing Speed: {episode/total_time:.1f} episodes/second")
     log_and_print("=" * 60)
     
     log_file.close()
@@ -753,6 +758,7 @@ if __name__ == "__main__":
     
     TRACK_FILE = f"{os.path.join(current_dir, '..')}/env/track.json"
     CAR_JSON_PATH = f"{os.path.join(current_dir, '..')}/env/racing_car.json"
+    MODEL_FOLDER_PATH = f"{os.path.join(current_dir, '..')}/example_models/"
     
     train_headless(
         max_episode = 300000,
@@ -767,5 +773,6 @@ if __name__ == "__main__":
         lr = args.lr,
         batch_size = args.batch_size,
         car_json_path = CAR_JSON_PATH,
-        track_file = TRACK_FILE
+        track_file = TRACK_FILE,
+        model_folder_path = MODEL_FOLDER_PATH
     )

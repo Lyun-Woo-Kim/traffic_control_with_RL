@@ -465,8 +465,8 @@ def evaluate_model(agent, game, ori_checkpoints, max_time, num_tests=10):
                         is_collision = True
                         done = True
                 
-                # 타임아웃
-                if curr_time / 1000 > 2:
+                # 타임아웃 (max_time 파라미터 사용)
+                if curr_time / 1000 > max_time:
                     done = True
                     return False, 1000, 0
                 
@@ -490,7 +490,7 @@ def evaluate_model(agent, game, ori_checkpoints, max_time, num_tests=10):
     
     return all_success, avg_speed, success_count
 
-
+# 학습 진행하는 함수
 def train_headless(max_episode=10000, output_size=6, replay_length=100000, 
                    target_update=2000, log_interval=100, save_interval=1000,
                    track_file="./track.json", 
@@ -498,8 +498,10 @@ def train_headless(max_episode=10000, output_size=6, replay_length=100000,
                    batch_size = 512,
                    layer_num = 3,
                    max_size = 512,
-                   lr = 0.0001):
-    """Dueling Double DQN 학습 함수 - 개선된 모델 저장 기준 적용"""
+                   lr = 0.0001,
+                   model_folder_path = f"{os.path.join(current_dir, '..')}/example_models/"):
+    if not os.path.exists(model_folder_path): 
+        os.makedirs(model_folder_path)
     pygame.init()
     
     game = RacingGame(track_file, car_json_path=car_json_path, headless=True)
@@ -639,7 +641,7 @@ def train_headless(max_episode=10000, output_size=6, replay_length=100000,
             if result['is_goal']:
                 goal_counts += 1
                 goal_time = result['curr_time'] / 1000
-                log_and_print(f"  ✓ GOAL! Episode {episode}, Avg Speed {np.mean(all_speed_list)}km/h), Total Goals: {goal_counts}")
+                log_and_print(f"  ✓ GOAL! Episode {episode}, Avg Speed: {np.mean(all_speed_list) * game.car.max_speed * 0.36: .2f} km/h, Total Goals: {goal_counts}")
                 
                 # [변경] 모델 평가 및 저장 로직
                 if goal_counts > 50:
@@ -650,22 +652,22 @@ def train_headless(max_episode=10000, output_size=6, replay_length=100000,
                     saved_counts += 1
                     
                     if all_success:
-                        log_and_print(f"  ✅ Evaluation: {success_count}/10 success, Avg Speed {np.mean(all_speed_list)}km/h)")
+                        log_and_print(f"  ✅ Evaluation: {success_count}/10 success, Avg Speed: {np.mean(all_speed_list) * game.car.max_speed * 0.36: .2f} km/h")
                         
                         # if avg_speed < best_avg_speed:
                         if avg_speed > best_avg_speed: 
                             # 이전 best 모델 삭제
                             lr_str = str(lr).replace(".", "_")
-                            old_path = f"{os.path.join(current_dir, '..')}/example_models/dddqn_best_lr_{lr_str}_L{layer_num}_S{max_size}_E{save_episode}_T{str(round(best_avg_speed, 3)).replace('.', '_')}.pth"
+                            old_path = f"{model_folder_path}/dddqn_best_lr_{lr_str}_L{layer_num}_S{max_size}_E{save_episode}_T{str(round(best_avg_speed, 3)).replace('.', '_')}.pth"
                             if os.path.exists(old_path):
                                 os.remove(old_path)
                             
                             # 새 best 모델 저장
                             best_avg_speed = avg_speed
                             save_episode = episode
-                            save_path = f"{os.path.join(current_dir, '..')}/example_models/dddqn_best_lr_{lr_str}_L{layer_num}_S{max_size}_E{save_episode}_T{str(round(best_avg_speed, 3)).replace('.', '_')}.pth"
+                            save_path = f"{model_folder_path}/dddqn_best_lr_{lr_str}_L{layer_num}_S{max_size}_E{save_episode}_T{str(round(best_avg_speed, 3)).replace('.', '_')}.pth"
                             torch.save(policy_net.model.state_dict(), save_path)
-                            log_and_print(f"  💾 New best model saved! (Episode: {episode}, Avg Speed {np.mean(all_speed_list)}km/h))")
+                            log_and_print(f"  💾 New best model saved! (Episode: {episode}, Avg Speed: {np.mean(all_speed_list) * game.car.max_speed * 0.36: .2f} km/h)")
                             saved_counts = 0
                     else:
                         log_and_print(f"  ❌ Evaluation: {success_count}/10 success - Not saved")
@@ -698,9 +700,9 @@ def train_headless(max_episode=10000, output_size=6, replay_length=100000,
     log_and_print(f"   Algorithm: Dueling Double DQN")
     log_and_print(f"   Total Episodes: {episode}")
     log_and_print(f"   Total Goals: {goal_counts}")
-    log_and_print(f"   Best Avg Time: {best_avg_speed:.3f}s")
+    log_and_print(f"   Best Avg Speed: {best_avg_speed:.3f}km/h")
     log_and_print(f"   Training Time: {total_time/60:.1f} minutes")
-    log_and_print(f"   Average Speed: {episode/total_time:.1f} episodes/second")
+    log_and_print(f"   Average Traing Speed: {episode/total_time:.1f} episodes/second")
     log_and_print("=" * 60)
     
     log_file.close()
@@ -721,6 +723,7 @@ if __name__ == "__main__":
     
     TRACK_FILE = f"{os.path.join(current_dir, '..')}/env/track.json"
     CAR_JSON_PATH = f"{os.path.join(current_dir, '..')}/env/racing_car.json"
+    MODEL_FOLDER_PATH = f"{os.path.join(current_dir, '..')}/example_models/"
     
     train_headless(
         max_episode = 300000,
@@ -734,5 +737,6 @@ if __name__ == "__main__":
         lr = args.lr,
         batch_size = args.batch_size,
         car_json_path = CAR_JSON_PATH,
-        track_file = TRACK_FILE
+        track_file = TRACK_FILE,
+        model_folder_path = MODEL_FOLDER_PATH
     )
