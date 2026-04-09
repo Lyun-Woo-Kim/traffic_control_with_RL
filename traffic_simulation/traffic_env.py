@@ -215,12 +215,17 @@ class RacingGame:
         self.lane_data      = []
         self.traffic_lights = []
         self.lane_segments: List[Tuple] = []   # 레이캐스팅용 차선 세그먼트 목록
-        self.start_pos  = None
-        self.end_pos    = None
-        self.checkpoints = []
+        self.start_positions = []   # 다중 시작 위치 목록
+        self.start_pos       = None # 이 인스턴스가 사용할 시작 위치 (start_point 인덱스로 결정)
+        self.end_pos         = None
+        self.checkpoints     = []
         self._load_track(track_file)
 
-        # 차량 생성
+        # car_json 의 start_point 번호로 시작 위치 선택
+        sp_idx = self.car_json.get('start_point', 0)
+        if self.start_positions:
+            sp_idx = sp_idx if sp_idx < len(self.start_positions) else 0
+            self.start_pos = self.start_positions[sp_idx]
         sp = self.start_pos or [width//2, height//2]
         self.car = Car(sp[0], sp[1], angle=0, car_info=self.car_json)
 
@@ -279,16 +284,26 @@ class RacingGame:
             # ── 신호등 로드 (timer 필드 추가) ────────────────────
             self.traffic_lights = []
             for tl in data.get('traffic_lights', []):
-                self.traffic_lights.append({
+                entry = {
                     'pos':             tuple(tl['pos']),
                     'state':           tl['state'],
                     'timer':           0,
                     'green_duration':  tl['green_duration'],
                     'yellow_duration': tl['yellow_duration'],
                     'red_duration':    tl['red_duration'],
-                })
+                }
+                if 'dir' in tl:
+                    entry['dir'] = tl['dir']
+                self.traffic_lights.append(entry)
 
-            self.start_pos   = data.get('start_pos')
+            # 다중 시작 위치 로드 (신버전: start_positions, 구버전: start_pos 호환)
+            if 'start_positions' in data:
+                self.start_positions = data['start_positions']
+            elif 'start_pos' in data and data['start_pos'] is not None:
+                self.start_positions = [data['start_pos']]
+            else:
+                self.start_positions = []
+
             self.end_pos     = data.get('end_pos')
             self.checkpoints = data.get('checkpoints', [])
 
@@ -675,6 +690,7 @@ class RacingGame:
     def reset(self):
         sp = self.start_pos or [self.width//2, self.height//2]
         self.car = Car(sp[0], sp[1], angle=0, car_info=self.car_json)
+
         self.collision = self.goal_reached = False
         self.total_distance = 0
         self.start_time = pygame.time.get_ticks()

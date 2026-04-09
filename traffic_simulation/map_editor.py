@@ -37,11 +37,11 @@ class TrackEditor:
         self.min_width   = 40
         self.max_width   = 200
 
-        self.segments       = []
-        self.checkpoints    = []
-        self.traffic_lights = []
-        self.start_pos      = None
-        self.end_pos        = None
+        self.segments        = []
+        self.checkpoints     = []
+        self.traffic_lights  = []
+        self.start_positions = []   # 다중 시작 위치 (인덱스 = start_point 번호)
+        self.end_pos         = None
 
         self.current_tool   = "line"
         self.drag_start     = None
@@ -326,8 +326,10 @@ class TrackEditor:
                 self._draw_traffic_light_ghost(ghost, mouse_pos, None)
 
         elif self.current_tool == 'start':
-            pygame.draw.circle(ghost, ( 0, 200,  0, 120), mouse_pos, 20)
-            pygame.draw.circle(ghost, ( 0, 200,  0, 200), mouse_pos, 20, 3)
+            pygame.draw.circle(ghost, (0, 200, 0, 120), mouse_pos, 20)
+            pygame.draw.circle(ghost, (0, 200, 0, 200), mouse_pos, 20, 3)
+            lbl = self.font.render(str(len(self.start_positions)), True, (0, 0, 0, 200))
+            ghost.blit(lbl, lbl.get_rect(center=mouse_pos))
 
         elif self.current_tool == 'end':
             pygame.draw.circle(ghost, (255,  50, 50, 120), mouse_pos, 20)
@@ -415,9 +417,9 @@ class TrackEditor:
             'direction_grid':  direction_grid,
             'lane_data':       lane_data,
             'traffic_lights':  tl_serial,
-            'checkpoints':    [[p[0],p[1]] for p in self.checkpoints],
-            'start_pos':       list(self.start_pos) if self.start_pos else None,
-            'end_pos':         list(self.end_pos)   if self.end_pos   else None,
+            'checkpoints':      [[p[0],p[1]] for p in self.checkpoints],
+            'start_positions':  [[p[0],p[1]] for p in self.start_positions],
+            'end_pos':           list(self.end_pos) if self.end_pos else None,
         }
         with open("track_data.json", "w") as f:
             json.dump(data, f, indent=2)
@@ -449,9 +451,10 @@ class TrackEditor:
                                 elif act == 'clear':
                                     self.segments=[]; self.checkpoints=[]
                                     self.traffic_lights=[]
-                                    self.start_pos=None; self.end_pos=None
+                                    self.start_positions=[]; self.end_pos=None
                                 elif act == 'undo':
-                                    if self.segments: self.segments.pop()
+                                    if   self.segments:         self.segments.pop()
+                                    elif self.start_positions:  self.start_positions.pop()
                                 else:
                                     self.current_tool = act
                                     self.temp_points  = []
@@ -471,8 +474,10 @@ class TrackEditor:
                             self.checkpoints.append(t_pos)
                         elif self.current_tool == 'light':
                             self.drag_start = t_pos   # 드래그로 방향 설정
-                        elif self.current_tool == 'start': self.start_pos = t_pos
-                        elif self.current_tool == 'end':   self.end_pos   = t_pos
+                        elif self.current_tool == 'start':
+                            self.start_positions.append(t_pos)
+                        elif self.current_tool == 'end':
+                            self.end_pos = t_pos
 
                 elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     self.dragging_slider = False
@@ -537,8 +542,12 @@ class TrackEditor:
             if my > self.ui_height:
                 self._draw_ghost_preview(sub, real_mouse)
 
-            if self.start_pos: self._draw_start_finish_line(sub, self.start_pos, True)
-            if self.end_pos:   self._draw_start_finish_line(sub, self.end_pos,   False)
+            for idx, sp in enumerate(self.start_positions):
+                pygame.draw.circle(sub, self.GREEN,  sp, 20)
+                pygame.draw.circle(sub, self.BLACK,  sp, 20, 3)
+                lbl = self.font.render(str(idx), True, self.BLACK)
+                sub.blit(lbl, lbl.get_rect(center=sp))
+            if self.end_pos: self._draw_start_finish_line(sub, self.end_pos, False)
             for cp in self.checkpoints:
                 pygame.draw.circle(sub, self.YELLOW, cp, 12)
             for tl in self.traffic_lights:
