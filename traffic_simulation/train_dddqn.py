@@ -333,6 +333,10 @@ def execute_action_with_duration(game, agent, action, duration_frames, ori_check
     curr_dis_gap    = dis_gap
     speed_list      = []
 
+    # checkpoints_reached 는 pop 하지 않고 커서로만 추적
+    # → game.checkpoints 인덱스가 유지되어 _check_checkpoints() 오작동 방지
+    processed_cp_count = len(game.checkpoints_reached)
+
     for _ in range(duration_frames):
         if game.collision or game.goal_reached:
             break
@@ -349,11 +353,11 @@ def execute_action_with_duration(game, agent, action, duration_frames, ori_check
         timeout = curr_time / 1000 > max_time
 
         cp_r = 0
-        if len(game.checkpoints_reached) > 0:
-            cp_r    = 50
-            cp_idx  = game.checkpoints_reached.pop(0)
-            reached_cp = game.checkpoints[cp_idx]
-            game.checkpoints.pop(cp_idx)
+        if len(game.checkpoints_reached) > processed_cp_count:
+            cp_r       = 50
+            cp_idx     = game.checkpoints_reached[processed_cp_count]  # peek, pop 금지
+            processed_cp_count += 1
+            reached_cp = game.checkpoints[cp_idx]   # game.checkpoints 에서 pop 금지
 
             try:
                 ori_cp_idx = ori_checkpoints.index(reached_cp)
@@ -425,16 +429,17 @@ def evaluate_model(agent, game, ori_checkpoints, max_time, num_tests=10):
             _, _, action, _, duration = agent.predict(state, greedy=True)
             controls = agent.get_real_action(action)
 
+            processed_cp_count = len(game.checkpoints_reached)
             for _ in range(duration):
                 if game.collision or game.goal_reached:
                     break
                 _, step_done, _ = game.step(controls)
                 all_speeds.append(game.car.speed * 0.36)
 
-                if len(game.checkpoints_reached) > 0:
-                    cp_idx     = game.checkpoints_reached.pop(0)
+                if len(game.checkpoints_reached) > processed_cp_count:
+                    cp_idx     = game.checkpoints_reached[processed_cp_count]
+                    processed_cp_count += 1
                     reached_cp = game.checkpoints[cp_idx]
-                    game.checkpoints.pop(cp_idx)
                     try:
                         ori_idx = ori_checkpoints.index(reached_cp)
                     except ValueError:

@@ -664,7 +664,6 @@ class RacingGame:
         self.checkpoints_reached = []
         for tl in self.traffic_lights:
             tl['timer'] = 0
-        return self.get_state()
 
     def step(self, controls):
         """
