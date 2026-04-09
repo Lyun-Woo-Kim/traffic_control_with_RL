@@ -215,10 +215,18 @@ class RacingGame:
         self.lane_data      = []
         self.traffic_lights = []
         self.lane_segments: List[Tuple] = []   # 레이캐스팅용 차선 세그먼트 목록
-        self.start_positions = []   # 다중 시작 위치 목록
-        self.start_pos       = None # 이 인스턴스가 사용할 시작 위치 (start_point 인덱스로 결정)
+        self.start_positions = []
+        self.start_pos       = None
         self.end_pos         = None
         self.checkpoints     = []
+
+        # 순차 신호등 상태
+        self.tl_green_ms  = 7000
+        self.tl_yellow_ms = 3000
+        self.tl_seq_idx   = 0
+        self.tl_seq_timer = 0
+        self.tl_seq_phase = 'green'
+
         self._load_track(track_file)
 
         # car_json 의 start_point 번호로 시작 위치 선택
@@ -282,15 +290,15 @@ class RacingGame:
                 self.track_surface, self.track_mask = self._build_track_from_lane_data()
 
             # ── 신호등 로드 (timer 필드 추가) ────────────────────
+            # 순차 신호등 전역 duration 로드
+            self.tl_green_ms  = data.get('tl_green_ms',  7000)
+            self.tl_yellow_ms = data.get('tl_yellow_ms', 3000)
+
             self.traffic_lights = []
-            for tl in data.get('traffic_lights', []):
+            for i, tl in enumerate(data.get('traffic_lights', [])):
                 entry = {
-                    'pos':             tuple(tl['pos']),
-                    'state':           tl['state'],
-                    'timer':           0,
-                    'green_duration':  tl['green_duration'],
-                    'yellow_duration': tl['yellow_duration'],
-                    'red_duration':    tl['red_duration'],
+                    'pos':   tuple(tl['pos']),
+                    'state': 'green' if i == 0 else 'red',
                 }
                 if 'dir' in tl:
                     entry['dir'] = tl['dir']
@@ -367,15 +375,24 @@ class RacingGame:
     # 신호등 업데이트
     # ----------------------------------------------------------
     def _update_traffic_lights(self, dt: float):
-        """dt: 밀리초"""
-        next_state = {'green': 'yellow', 'yellow': 'red', 'red': 'green'}
-        for tl in self.traffic_lights:
-            tl['timer'] += dt
-            if tl['timer'] >= tl[f"{tl['state']}_duration"]:
-                tl['timer'] = 0
-                tl['state'] = next_state[tl['state']]
-                if tl['state'] == 'green':
-                    tl['green_duration'] = random.randint(5000, 15000)
+        """dt: 밀리초. 순차 신호등: 0번→1번→... 순으로 초록→노랑→(다음 번호 초록)"""
+        n = len(self.traffic_lights)
+        if n == 0:
+            return
+
+        self.tl_seq_timer += dt
+        duration = self.tl_green_ms if self.tl_seq_phase == 'green' else self.tl_yellow_ms
+
+        if self.tl_seq_timer >= duration:
+            self.tl_seq_timer -= duration
+            if self.tl_seq_phase == 'green':
+                self.tl_seq_phase = 'yellow'
+            else:
+                self.tl_seq_idx   = (self.tl_seq_idx + 1) % n
+                self.tl_seq_phase = 'green'
+
+        for i, tl in enumerate(self.traffic_lights):
+            tl['state'] = self.tl_seq_phase if i == self.tl_seq_idx else 'red'
 
     # ----------------------------------------------------------
     # ── STATE 생성 관련 함수들 ──────────────────────────────
@@ -697,8 +714,7 @@ class RacingGame:
         self.end_time = None
         self.camera_x = self.camera_y = 0
         self.checkpoints_reached = []
-        for tl in self.traffic_lights:
-            tl['timer'] = 0
+        # 신호등 시퀀스는 리셋하지 않음 — 에피소드 간 연속 작동으로 다양한 신호 상황 노출
 
     def step(self, controls):
         """

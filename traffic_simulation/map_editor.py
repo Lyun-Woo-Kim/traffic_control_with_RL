@@ -43,6 +43,13 @@ class TrackEditor:
         self.start_positions = []   # 다중 시작 위치 (인덱스 = start_point 번호)
         self.end_pos         = None
 
+        # 순차 신호등 상태 (0번 → 1번 → 2번 → ... → 0번 순환)
+        self.TL_GREEN_MS  = 7000   # 초록 지속 시간 (ms)
+        self.TL_YELLOW_MS = 3000   # 노랑 지속 시간 (ms)
+        self.tl_seq_idx   = 0      # 현재 활성 신호등 인덱스
+        self.tl_seq_timer = 0      # 현재 단계 경과 시간 (ms)
+        self.tl_seq_phase = 'green'  # 'green' or 'yellow'
+
         self.current_tool   = "line"
         self.drag_start     = None
         self.temp_points    = []
@@ -341,14 +348,26 @@ class TrackEditor:
 
     # ------------------------------------------------------------------ 신호등 업데이트
     def _update_traffic_lights(self, dt):
-        next_state = {'green': 'yellow', 'yellow': 'red', 'red': 'green'}
-        for tl in self.traffic_lights:
-            tl['timer'] += dt
-            if tl['timer'] >= tl[f"{tl['state']}_duration"]:
-                tl['timer'] = 0
-                tl['state'] = next_state[tl['state']]
-                if tl['state'] == 'green':          # 초록이 될 때마다 랜덤 지속시간 재설정
-                    tl['green_duration'] = random.randint(5000, 15000)
+        """순차 신호등: 0번 초록→노랑, 1번 초록→노랑, ... 순으로 동일 시간 작동"""
+        n = len(self.traffic_lights)
+        if n == 0:
+            return
+
+        self.tl_seq_timer += dt
+        duration = self.TL_GREEN_MS if self.tl_seq_phase == 'green' else self.TL_YELLOW_MS
+
+        if self.tl_seq_timer >= duration:
+            self.tl_seq_timer -= duration
+            if self.tl_seq_phase == 'green':
+                self.tl_seq_phase = 'yellow'
+            else:
+                # 노랑 끝 → 다음 신호등으로
+                self.tl_seq_idx   = (self.tl_seq_idx + 1) % n
+                self.tl_seq_phase = 'green'
+
+        # 모든 신호등 상태 일괄 갱신
+        for i, tl in enumerate(self.traffic_lights):
+            tl['state'] = self.tl_seq_phase if i == self.tl_seq_idx else 'red'
 
     # ------------------------------------------------------------------ 저장용 데이터 빌드
     def _build_direction_grid(self):
@@ -404,12 +423,8 @@ class TrackEditor:
         lane_data      = self._build_lane_data()
 
         tl_serial = [{
-            'pos':              [tl['pos'][0], tl['pos'][1]],
-            'dir':               tl.get('dir', [1.0, 0.0]),
-            'state':             tl['state'],
-            'green_duration':    tl['green_duration'],
-            'yellow_duration':   tl['yellow_duration'],
-            'red_duration':      tl['red_duration'],
+            'pos': [tl['pos'][0], tl['pos'][1]],
+            'dir':  tl.get('dir', [1.0, 0.0]),
         } for tl in self.traffic_lights]
 
         data = {
@@ -419,6 +434,8 @@ class TrackEditor:
             'direction_grid':  direction_grid,
             'lane_data':       lane_data,
             'traffic_lights':  tl_serial,
+            'tl_green_ms':     self.TL_GREEN_MS,
+            'tl_yellow_ms':    self.TL_YELLOW_MS,
             'checkpoints':      [[p[0],p[1]] for p in self.checkpoints],
             'start_positions':  [[p[0],p[1]] for p in self.start_positions],
             'end_pos':           list(self.end_pos) if self.end_pos else None,
@@ -454,6 +471,8 @@ class TrackEditor:
                                     self.segments=[]; self.checkpoints=[]
                                     self.traffic_lights=[]
                                     self.start_positions=[]; self.end_pos=None
+                                    self.tl_seq_idx=0; self.tl_seq_timer=0
+                                    self.tl_seq_phase='green'
                                 elif act == 'undo':
                                     if   self.segments:         self.segments.pop()
                                     elif self.start_positions:  self.start_positions.pop()
@@ -498,13 +517,9 @@ class TrackEditor:
                         mag = math.hypot(dx, dy)
                         dir_vec = [round(dx/mag, 4), round(dy/mag, 4)] if mag > 5 else [1.0, 0.0]
                         self.traffic_lights.append({
-                            'pos':             list(self.drag_start),
-                            'dir':              dir_vec,
-                            'state':           'red',
-                            'timer':            0,
-                            'green_duration':   random.randint(5000, 15000),
-                            'yellow_duration':  3000,
-                            'red_duration':     7000,
+                            'pos':   list(self.drag_start),
+                            'dir':   dir_vec,
+                            'state': 'red',
                         })
                         self.drag_start = None
 

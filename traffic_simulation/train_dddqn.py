@@ -160,13 +160,24 @@ def get_frame_reward(state, is_collision, is_goal,
             reward -= 5.0   # 차선 침범 역주행 패널티 (대)
 
     # ── 신호 위반 패널티 ──────────────────────────────────────────
+    # _get_traffic_light_info() 에서 차량 진행 방향과 일치하는 신호등만 반환하므로
+    # 이 패널티는 해당 차량이 실제로 따라야 하는 신호등에 대해서만 적용됨
     tl_exists = state[27]
     tl_state  = state[28]
     if tl_exists == 1:
-        if tl_state == 0 and speed_n > 0.05:    # 빨강 신호 위반
-            reward -= 3.0
-        elif tl_state == 1 and speed_n > 0.15:  # 노랑 신호인데 속도를 안 줄이면
-            reward -= 1.0
+        if tl_state == 0:   # 빨간불
+            if speed_n > 0.05:
+                # 속도에 비례한 패널티 — 빠를수록 더 큰 위반
+                reward -= 5.0 * speed_n
+            else:
+                # 빨간불에 정지 → 준수 보상
+                reward += 0.5
+        elif tl_state == 1:  # 노란불 — 감속해야 함
+            if speed_n > 0.2:
+                reward -= 2.0 * (speed_n - 0.2)
+            else:
+                # 노란불에 감속 중 → 소량 보상
+                reward += 0.2
 
     return reward
 
