@@ -312,8 +312,10 @@ class TrackEditor:
                 pygame.draw.circle(ghost, (255, 255, 255, 100), mouse_pos, self.track_width // 2, 2)
 
         elif self.current_tool == 'checkpoint':
-            pygame.draw.circle(ghost, (255, 200,  0, 120), mouse_pos, 12)
-            pygame.draw.circle(ghost, (255, 200,  0, 200), mouse_pos, 12, 2)
+            pygame.draw.circle(ghost, (255, 200, 0, 120), mouse_pos, 14)
+            pygame.draw.circle(ghost, (255, 200, 0, 200), mouse_pos, 14, 2)
+            lbl = self.font.render(str(len(self.checkpoints)), True, (0, 0, 0, 200))
+            ghost.blit(lbl, lbl.get_rect(center=mouse_pos))
 
         elif self.current_tool == 'light':
             if self.drag_start:
@@ -548,8 +550,11 @@ class TrackEditor:
                 lbl = self.font.render(str(idx), True, self.BLACK)
                 sub.blit(lbl, lbl.get_rect(center=sp))
             if self.end_pos: self._draw_start_finish_line(sub, self.end_pos, False)
-            for cp in self.checkpoints:
-                pygame.draw.circle(sub, self.YELLOW, cp, 12)
+            for idx, cp in enumerate(self.checkpoints):
+                pygame.draw.circle(sub, self.YELLOW, cp, 14)
+                pygame.draw.circle(sub, self.BLACK,  cp, 14, 2)
+                lbl = self.font.render(str(idx), True, self.BLACK)
+                sub.blit(lbl, lbl.get_rect(center=cp))
             for tl in self.traffic_lights:
                 self._draw_traffic_light(sub, tl)
 
