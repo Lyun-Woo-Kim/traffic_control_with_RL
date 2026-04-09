@@ -117,7 +117,75 @@ class TrackEditor:
             if carry < 0: carry = 0
         return samples
 
-    # ------------------------------------------------------------------ 렌더링
+    # ------------------------------------------------------------------ 통합 도로 렌더링
+    def _render_all_roads(self, surface):
+        """
+        모든 세그먼트를 통합 렌더링.
+        겹치는 부분은 단일 도로색으로 표시, 외곽 경계선만 한 번 그림.
+        """
+        if not self.segments:
+            return
+
+        w, h = surface.get_size()
+
+        # ── Pass 1: 모든 fill 을 별도 surface 에 ──────────────────────
+        road_surf = pygame.Surface((w, h))
+        road_surf.fill((180, 200, 180))   # 배경색과 동일
+
+        for seg in self.segments:
+            pts = (self._get_bezier_points(*seg['points'])
+                   if seg['type'] == 'curve' else seg['points'])
+            left, right = self._get_road_polygon(pts, seg['width'])
+            if not left:
+                continue
+            for i in range(len(left) - 1):
+                poly = [left[i], left[i+1], right[i+1], right[i]]
+                pygame.draw.polygon(road_surf, self.GRAY, poly)
+
+        surface.blit(road_surf, (0, 0))
+
+        # ── Pass 2: numpy 경계 감지 → 외곽선 한 번만 그리기 ──────────
+        arr     = pygame.surfarray.array3d(road_surf)
+        is_road = arr[:, :, 0] < 100   # GRAY R=60 < 100, BG R=180
+
+        # 경계 픽셀: 도로이면서 인접 픽셀 중 비도로가 있는 것
+        bnd          = np.zeros_like(is_road)
+        bnd[:-1, :] |= is_road[:-1, :] & ~is_road[1:, :]
+        bnd[1:, :]  |= is_road[1:, :]  & ~is_road[:-1, :]
+        bnd[:, :-1] |= is_road[:, :-1] & ~is_road[:, 1:]
+        bnd[:, 1:]  |= is_road[:, 1:]  & ~is_road[:, :-1]
+
+        # 2픽셀 팽창 → 경계선 두께 ~4px
+        dilated = bnd.copy()
+        for _ in range(2):
+            tmp        = dilated.copy()
+            tmp[1:,  :] |= dilated[:-1, :]
+            tmp[:-1, :] |= dilated[1:, :]
+            tmp[:,  1:] |= dilated[:, :-1]
+            tmp[:, :-1] |= dilated[:, 1:]
+            dilated = tmp
+
+        edge_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+        ea = pygame.surfarray.pixels3d(edge_surf)
+        aa = pygame.surfarray.pixels_alpha(edge_surf)
+        ea[dilated] = (40, 40, 40)
+        aa[dilated] = 255
+        del ea, aa
+        surface.blit(edge_surf, (0, 0))
+
+        # ── Pass 3: 중앙 대시선 + 방향 화살표 ───────────────────────
+        for seg in self.segments:
+            pts = (self._get_bezier_points(*seg['points'])
+                   if seg['type'] == 'curve' else seg['points'])
+            self._draw_dashed_line(surface, self.YELLOW, pts, 2)
+            if seg['type'] == 'line':
+                self._draw_arrow(surface, pts[0], pts[-1])
+            else:
+                for i in range(len(pts) - 1):
+                    if i % 10 == 5:
+                        self._draw_arrow(surface, pts[i], pts[i+1])
+
+    # ------------------------------------------------------------------ 개별 세그먼트 렌더링 (미리보기용)
     def _draw_arrow(self, surface, p1, p2):
         dx, dy = p2[0]-p1[0], p2[1]-p1[1]
         if math.hypot(dx, dy) < 20: return
@@ -444,8 +512,7 @@ class TrackEditor:
             sub = self.screen.subsurface(
                 pygame.Rect(0, self.ui_height, self.width, self.height-self.ui_height))
 
-            for seg in self.segments:
-                self._draw_segment(sub, seg, preview=False)
+            self._render_all_roads(sub)
 
             real_mouse = (mx, my - self.ui_height)
 
