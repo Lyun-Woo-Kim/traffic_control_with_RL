@@ -130,23 +130,42 @@ def get_frame_reward(state, is_collision, is_goal,
     # 체크포인트 보상
     reward += cp_reward
 
-    # 역주행 패널티: dir_x, dir_y 와 속도 방향 비교
-    # state 인덱스: [16]=dir_x, [17]=dir_y  (sensors8 + state8 = 16부터 car_features)
-    # 실제 인덱스: sensors(0~7) car_state(8~15) car_feat(16~23) road(24~28)
+    # ── 역주행 패널티 ────────────────────────────────────────────
+    # state 인덱스: sensors(0~7) car_state(8~15) car_feat(16~23) road(24~28)
+    #   state[8]=cos_angle(정규화), state[9]=sin_angle(정규화)
+    #   state[3]=vel_x(정규화),     state[4]=vel_y(정규화)
+    #   state[24]=dir_x, state[25]=dir_y  (교차로 = [0.0, 0.0])
+    vel_x_n = state[3]
+    vel_y_n = state[4]
+    speed_n = state[2]
+
+    # heading 벡터 (정규화 해제: 저장 시 (cos+1)/2 로 인코딩)
+    cos_a = state[8] * 2.0 - 1.0
+    sin_a = state[9] * 2.0 - 1.0
+
+    # ① 후진 역주행: 차량 heading 과 속도 방향이 반대
+    #    실제로 뒤로 움직이는 상황 → 소형 패널티
+    heading_vel_dot = cos_a * vel_x_n + sin_a * vel_y_n
+    if heading_vel_dot < -0.1 and speed_n > 0.05:
+        reward -= 1.0   # 후진 패널티 (소)
+
+    # ② 차선 침범 역주행: 앞으로 가고 있는데 도로 방향과 반대
+    #    교차로(dir=[0,0])는 방향 정보 없으므로 제외
     dir_x = state[24]
     dir_y = state[25]
     if dir_x != 0.0 or dir_y != 0.0:
-        vel_x_n = state[3]   # 정규화 vel_x
-        vel_y_n = state[4]   # 정규화 vel_y
-        alignment = vel_x_n * dir_x + vel_y_n * dir_y
-        if alignment < -0.1:
-            reward -= 2.0    # 역주행 패널티
+        road_vel_dot = vel_x_n * dir_x + vel_y_n * dir_y
+        is_going_forward = heading_vel_dot >= 0.0
+        if is_going_forward and road_vel_dot < -0.1:
+            reward -= 5.0   # 차선 침범 역주행 패널티 (대)
 
-    # 신호등 빨간불에 진행 패널티
+    # ── 신호 위반 패널티 ──────────────────────────────────────────
     tl_exists = state[27]
     tl_state  = state[28]
-    if tl_exists == 1 and tl_state == 0:   # 빨강
-        if state[2] > 0.1:                 # 속도 있으면
+    if tl_exists == 1:
+        if tl_state == 0 and speed_n > 0.05:    # 빨강 신호 위반
+            reward -= 3.0
+        elif tl_state == 1 and speed_n > 0.15:  # 노랑 신호인데 속도를 안 줄이면
             reward -= 1.0
 
     return reward
