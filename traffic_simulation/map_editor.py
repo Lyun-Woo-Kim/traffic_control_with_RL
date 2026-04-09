@@ -189,6 +189,83 @@ class TrackEditor:
         pygame.draw.circle(surface,
                            self.TL_GREEN  if tl['state'] == 'green'  else self.TL_OFF_G,
                            (x, y+25), 9)
+        # 방향 화살표
+        if 'dir' in tl:
+            dx, dy = tl['dir']
+            ex = int(x + dx * 35)
+            ey = int(y + dy * 35)
+            pygame.draw.line(surface, self.ORANGE, (x, y), (ex, ey), 3)
+            angle = math.atan2(dy, dx)
+            a1 = (int(ex + math.cos(angle+2.5)*8), int(ey + math.sin(angle+2.5)*8))
+            a2 = (int(ex + math.cos(angle-2.5)*8), int(ey + math.sin(angle-2.5)*8))
+            pygame.draw.polygon(surface, self.ORANGE, [(ex, ey), a1, a2])
+
+    def _draw_traffic_light_ghost(self, surface, pos, dir_vec):
+        """반투명 신호등 미리보기 — SRCALPHA surface에 그린다"""
+        x, y = int(pos[0]), int(pos[1])
+        pygame.draw.rect(surface,   (0,   0,   0, 150), (x-14, y-38, 28, 76), border_radius=5)
+        pygame.draw.circle(surface, (80,  0,   0, 150), (x, y-25), 9)
+        pygame.draw.circle(surface, (80,  70,  0, 150), (x, y),    9)
+        pygame.draw.circle(surface, (0,   70,  0, 150), (x, y+25), 9)
+        if dir_vec:
+            dx, dy = dir_vec
+            ex = int(x + dx * 35)
+            ey = int(y + dy * 35)
+            pygame.draw.line(surface,    (255, 150, 0, 220), (x, y), (ex, ey), 3)
+            angle = math.atan2(dy, dx)
+            a1 = (int(ex + math.cos(angle+2.5)*8), int(ey + math.sin(angle+2.5)*8))
+            a2 = (int(ex + math.cos(angle-2.5)*8), int(ey + math.sin(angle-2.5)*8))
+            pygame.draw.polygon(surface, (255, 150, 0, 220), [(ex, ey), a1, a2])
+
+    def _draw_ghost_preview(self, surface, mouse_pos):
+        """현재 툴의 반투명 hover 미리보기"""
+        ghost = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        mx, my = mouse_pos
+
+        if self.current_tool == 'line':
+            if not self.drag_start:
+                # 드래그 전: 도로 폭 원으로 표시
+                pygame.draw.circle(ghost, (150, 150, 150,  70), mouse_pos, self.track_width // 2)
+                pygame.draw.circle(ghost, (255, 255, 255, 100), mouse_pos, self.track_width // 2, 2)
+
+        elif self.current_tool == 'curve':
+            n = len(self.temp_points)
+            if n == 3:
+                # 4번째 점 = 마우스 → bezier 미리보기
+                bpts = self._get_bezier_points(*self.temp_points, mouse_pos)
+                left, right = self._get_road_polygon(bpts, self.track_width)
+                if left:
+                    for i in range(len(left) - 1):
+                        pygame.draw.polygon(ghost, (150, 150, 150, 70),
+                                            [left[i], left[i+1], right[i+1], right[i]])
+                    pygame.draw.lines(ghost, (255, 200, 0, 150), False, bpts, 2)
+            elif n == 0:
+                pygame.draw.circle(ghost, (150, 150, 150,  70), mouse_pos, self.track_width // 2)
+                pygame.draw.circle(ghost, (255, 255, 255, 100), mouse_pos, self.track_width // 2, 2)
+
+        elif self.current_tool == 'checkpoint':
+            pygame.draw.circle(ghost, (255, 200,  0, 120), mouse_pos, 12)
+            pygame.draw.circle(ghost, (255, 200,  0, 200), mouse_pos, 12, 2)
+
+        elif self.current_tool == 'light':
+            if self.drag_start:
+                dx = mx - self.drag_start[0]
+                dy = my - self.drag_start[1]
+                mag = math.hypot(dx, dy)
+                dir_vec = (dx/mag, dy/mag) if mag > 5 else (1.0, 0.0)
+                self._draw_traffic_light_ghost(ghost, self.drag_start, dir_vec)
+            else:
+                self._draw_traffic_light_ghost(ghost, mouse_pos, None)
+
+        elif self.current_tool == 'start':
+            pygame.draw.circle(ghost, ( 0, 200,  0, 120), mouse_pos, 20)
+            pygame.draw.circle(ghost, ( 0, 200,  0, 200), mouse_pos, 20, 3)
+
+        elif self.current_tool == 'end':
+            pygame.draw.circle(ghost, (255,  50, 50, 120), mouse_pos, 20)
+            pygame.draw.circle(ghost, (255,  50, 50, 200), mouse_pos, 20, 3)
+
+        surface.blit(ghost, (0, 0))
 
     # ------------------------------------------------------------------ 신호등 업데이트
     def _update_traffic_lights(self, dt):
@@ -256,6 +333,7 @@ class TrackEditor:
 
         tl_serial = [{
             'pos':              [tl['pos'][0], tl['pos'][1]],
+            'dir':               tl.get('dir', [1.0, 0.0]),
             'state':             tl['state'],
             'green_duration':    tl['green_duration'],
             'yellow_duration':   tl['yellow_duration'],
@@ -324,14 +402,7 @@ class TrackEditor:
                         elif self.current_tool == 'checkpoint':
                             self.checkpoints.append(t_pos)
                         elif self.current_tool == 'light':
-                            self.traffic_lights.append({
-                                'pos':             t_pos,
-                                'state':          'red',
-                                'timer':           0,
-                                'green_duration':  random.randint(5000, 15000),
-                                'yellow_duration': 3000,
-                                'red_duration':    7000,
-                            })
+                            self.drag_start = t_pos   # 드래그로 방향 설정
                         elif self.current_tool == 'start': self.start_pos = t_pos
                         elif self.current_tool == 'end':   self.end_pos   = t_pos
 
@@ -344,6 +415,22 @@ class TrackEditor:
                             self.segments.append({'type':   'line',
                                                   'points': [self.drag_start, t_pos],
                                                   'width':  self.track_width})
+                        self.drag_start = None
+                    elif self.current_tool == 'light' and self.drag_start and my > self.ui_height:
+                        t_pos = (mx, my - self.ui_height)
+                        dx = t_pos[0] - self.drag_start[0]
+                        dy = t_pos[1] - self.drag_start[1]
+                        mag = math.hypot(dx, dy)
+                        dir_vec = [round(dx/mag, 4), round(dy/mag, 4)] if mag > 5 else [1.0, 0.0]
+                        self.traffic_lights.append({
+                            'pos':             list(self.drag_start),
+                            'dir':              dir_vec,
+                            'state':           'red',
+                            'timer':            0,
+                            'green_duration':   random.randint(5000, 15000),
+                            'yellow_duration':  3000,
+                            'red_duration':     7000,
+                        })
                         self.drag_start = None
 
             if self.dragging_slider:
@@ -361,14 +448,27 @@ class TrackEditor:
                 self._draw_segment(sub, seg, preview=False)
 
             real_mouse = (mx, my - self.ui_height)
+
+            # Line 드래그 미리보기
             if self.current_tool == 'line' and self.drag_start:
                 self._draw_segment(sub,
                     {'type':'line','points':[self.drag_start, real_mouse],'width':self.track_width},
                     preview=True)
-            elif self.current_tool == 'curve' and self.temp_points:
+
+            # Curve 제어점 표시 (3점 미만일 때만 연결선 표시 — 3점이면 ghost가 bezier 처리)
+            if self.current_tool == 'curve' and self.temp_points:
                 for p in self.temp_points:
                     pygame.draw.circle(sub, self.RED, p, 5)
-                pygame.draw.line(sub, self.RED, self.temp_points[-1], real_mouse, 1)
+                if len(self.temp_points) < 3:
+                    pygame.draw.line(sub, self.RED, self.temp_points[-1], real_mouse, 1)
+
+            # Light 드래그 중 방향선
+            if self.current_tool == 'light' and self.drag_start:
+                pygame.draw.line(sub, self.ORANGE, self.drag_start, real_mouse, 2)
+
+            # Ghost 미리보기 (모든 툴 공통)
+            if my > self.ui_height:
+                self._draw_ghost_preview(sub, real_mouse)
 
             if self.start_pos: self._draw_start_finish_line(sub, self.start_pos, True)
             if self.end_pos:   self._draw_start_finish_line(sub, self.end_pos,   False)

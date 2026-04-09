@@ -456,6 +456,7 @@ class RacingGame:
     def _get_traffic_light_info(self) -> tuple:
         """
         전방 센서 범위 내 가장 가까운 신호등 정보 반환.
+        신호등의 dir 벡터와 차량 진행 방향이 일치하는 신호등만 감지.
 
         반환: (tl_exists: int, tl_state: int)
           tl_exists : 0 = 없음, 1 = 있음
@@ -467,6 +468,15 @@ class RacingGame:
         fwd_angles = [heading + SENSOR_ANGLES[i] for i in FORWARD_SENSOR_IDX]
         half_span  = math.pi / 8
 
+        # 차량 진행 방향 단위벡터 (정지 시 heading 기준)
+        spd = self.car.speed
+        if spd > 1:
+            car_dx = self.car.velocity_x / spd
+            car_dy = self.car.velocity_y / spd
+        else:
+            car_dx = math.cos(heading)
+            car_dy = math.sin(heading)
+
         nearest_dist = max_dist
         nearest_tl   = None
 
@@ -476,6 +486,15 @@ class RacingGame:
             dist   = math.hypot(dx, dy)
             if dist > max_dist:
                 continue
+
+            # 신호등 dir 가 있으면 차량 진행 방향과 일치 여부 확인
+            # dir = 이 신호등이 제어하는 교통 흐름 방향
+            tl_dir = tl.get('dir')
+            if tl_dir is not None:
+                alignment = car_dx * tl_dir[0] + car_dy * tl_dir[1]
+                if alignment < 0.3:   # 방향이 맞지 않으면 무시
+                    continue
+
             angle_to_tl = math.atan2(dy, dx)
             for fwd_a in fwd_angles:
                 diff = (angle_to_tl - fwd_a + math.pi) % (2 * math.pi) - math.pi
