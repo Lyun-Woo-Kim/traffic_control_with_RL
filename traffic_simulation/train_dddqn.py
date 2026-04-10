@@ -1,9 +1,8 @@
 """
-새 맵용 학습 코드 - Dueling Double DQN + Dual Head
-- racing_game_2d_new.py 사용 (track_data.json 포맷)
-- 8방향 차선 레이캐스팅 센서
-- 도로 방향벡터 + 교차로 여부 + 신호등 정보 포함
-- train_headless() 내 CHECKPOINTS 직접 지정
+다중 에이전트 학습 코드 — Dueling Double DQN + Dual Head
+- 에이전트마다 독립 네트워크 / 리플레이 버퍼 / epsilon
+- 각 차량 JSON의 checkpoints 마지막 항목 = GOAL
+- 모든 에이전트가 한 환경에서 동시에 주행하며 서로를 센서로 인식
 """
 
 import pygame
@@ -28,45 +27,44 @@ INPUT_SIZE = 30   # 8(센서) + 8(차량상태) + 8(차량스펙) + 6(도로/신
 # ============================================================
 # 상태 수집 함수
 # ============================================================
-def get_sensors(game):
-    """
-    8방향 레이캐스팅 - 차선(lane lines)까지의 거리 (비정규화)
-    get_data() 에서 sensor_range 로 나눠 정규화함
-    """
+def get_sensors(game, car_idx=0):
+    """car_idx 차량의 8방향 레이캐스팅 (비정규화 px)"""
+    car     = game.cars[car_idx]
     sensors = []
     for i in range(8):
-        angle    = game.car.angle + i * (math.pi / 4)
-        dist_n   = game._cast_ray(game.car.x, game.car.y, angle)
-        sensors.append(dist_n * game.car.sensor_range)
+        angle  = car.angle + i * (math.pi / 4)
+        dist_n = game._cast_ray_for_car(car_idx, car.x, car.y, angle)
+        sensors.append(dist_n * car.sensor_range)
     return sensors
 
 
-def get_data(game, standard_cp=None, dis_gap=None):
+def get_data(game, car_idx=0, standard_cp=None, dis_gap=None):
     """
-    전체 상태 벡터 생성 (항상 INPUT_SIZE=29 고정)
+    car_idx 에이전트의 상태 벡터 생성 (INPUT_SIZE=30 고정)
 
     구성:
       sensors(8) + [cos,sin,speed,vx,vy,dist,angle,drift](8)
-      + car_features(8) + [dir_x,dir_y,is_inter,tl_exists,tl_state](5)
+      + car_features(8) + [dir_x,dir_y,is_inter,tl_exists,tl_state,right_turnable](6)
     """
-    angle     = game.car.angle
+    car   = game.cars[car_idx]
+    angle = car.angle
+
     cos_angle = (math.cos(angle) + 1) / 2
     sin_angle = (math.sin(angle) + 1) / 2
-    speed     = game.car.speed / game.car.max_speed
-    vel_x     = game.car.velocity_x / game.car.max_speed
-    vel_y     = game.car.velocity_y / game.car.max_speed
-    sensors   = [s / game.car.sensor_range for s in get_sensors(game)]
+    speed     = car.speed / car.max_speed
+    vel_x     = car.velocity_x / car.max_speed
+    vel_y     = car.velocity_y / car.max_speed
+    sensors   = [s / car.sensor_range for s in get_sensors(game, car_idx)]
 
-    is_drifting = 1.0 if game.car.is_drifting else 0.0   # 항상 정의
+    is_drifting = 1.0 if car.is_drifting else 0.0
 
     if standard_cp is not None and dis_gap is not None and dis_gap > 0:
-        current_distance = math.dist([game.car.x, game.car.y], standard_cp)
+        current_distance = math.dist([car.x, car.y], standard_cp)
         normalized_dist  = min(current_distance / dis_gap, 1.5)
-
-        dx = standard_cp[0] - game.car.x
-        dy = standard_cp[1] - game.car.y
-        target_angle    = math.atan2(dy, dx)
-        relative_angle  = target_angle - game.car.angle
+        dx = standard_cp[0] - car.x
+        dy = standard_cp[1] - car.y
+        target_angle   = math.atan2(dy, dx)
+        relative_angle = target_angle - car.angle
         while relative_angle >  math.pi: relative_angle -= 2 * math.pi
         while relative_angle < -math.pi: relative_angle += 2 * math.pi
         normalized_angle = (relative_angle + math.pi) / (2 * math.pi)
@@ -75,25 +73,22 @@ def get_data(game, standard_cp=None, dis_gap=None):
         normalized_angle = 0.5
 
     car_features = [
-        game.car.max_speed          / 1000,
-        game.car.acceleration_force / 1000,
-        game.car.brake_force        / 1000,
-        game.car.base_friction,
-        game.car.lateral_friction,
-        game.car.turn_speed         / 10,
-        game.car.base_drift_friction,          # 기존 코드의 drift_lateral_friction 오류 수정
-        game.car.sensor_range       / 1000,
+        car.max_speed          / 1000,
+        car.acceleration_force / 1000,
+        car.brake_force        / 1000,
+        car.base_friction,
+        car.lateral_friction,
+        car.turn_speed         / 10,
+        car.base_drift_friction,
+        car.sensor_range       / 1000,
     ]
 
-    # 도로 방향벡터 + 교차로 여부
-    road_info       = game._get_road_info()    # [is_intersection, dir_x, dir_y]
+    road_info       = game._get_road_info_for_car(car_idx)
     is_intersection = road_info[0]
     dir_x           = road_info[1]
     dir_y           = road_info[2]
 
-    # 신호등: 존재 여부 + 상태 + 우회전 가능 여부
-    # right_turnable=1 이면 빨간불이라도 우회전 통과 가능
-    tl_exists, tl_state, right_turnable = game._get_traffic_light_info()
+    tl_exists, tl_state, right_turnable = game._get_traffic_light_info_for_car(car_idx)
 
     return (sensors
             + [cos_angle, sin_angle, speed, vel_x, vel_y,
@@ -103,16 +98,14 @@ def get_data(game, standard_cp=None, dis_gap=None):
 
 
 # ============================================================
-# 보상 함수
+# 보상 함수 (프레임 단위, 에이전트 공통)
 # ============================================================
 def get_frame_reward(state, is_collision, is_goal,
                      curr_distance, curr_time, max_time,
                      cp_reward, dis_gap, action_index,
                      max_speed, prev_distance):
-    """프레임별 보상 계산"""
     reward = 0.0
 
-    # 충돌 / 골
     if is_collision: return -500.0
     if is_goal:      return  500.0
 
@@ -122,57 +115,44 @@ def get_frame_reward(state, is_collision, is_goal,
 
     # 목표 접근 보상
     if dis_gap > 0:
-        dist_improvement = prev_distance - curr_distance
-        reward += dist_improvement * 0.5
+        reward += (prev_distance - curr_distance) * 0.5
 
-    # 속도 보상 (state[2] = 정규화 속도)
+    # 속도 보상
     reward += state[2] * max_speed * 0.002
 
     # 체크포인트 보상
     reward += cp_reward
 
-    # ── 역주행 패널티 ────────────────────────────────────────────
-    # state 인덱스: sensors(0~7) car_state(8~15) car_feat(16~23) road(24~28)
-    #   state[8]=cos_angle(정규화), state[9]=sin_angle(정규화)
-    #   state[3]=vel_x(정규화),     state[4]=vel_y(정규화)
-    #   state[24]=dir_x, state[25]=dir_y  (교차로 = [0.0, 0.0])
+    # ── 역주행 패널티 ─────────────────────────────────────────────
     vel_x_n = state[3]
     vel_y_n = state[4]
     speed_n = state[2]
+    cos_a   = state[8] * 2.0 - 1.0
+    sin_a   = state[9] * 2.0 - 1.0
 
-    # heading 벡터 (정규화 해제: 저장 시 (cos+1)/2 로 인코딩)
-    cos_a = state[8] * 2.0 - 1.0
-    sin_a = state[9] * 2.0 - 1.0
-
-    # ① 후진 역주행: 차량 heading 과 속도 방향이 반대
-    #    실제로 뒤로 움직이는 상황 → 소형 패널티
+    # ① 후진 (차량 heading 과 속도 반대)
     heading_vel_dot = cos_a * vel_x_n + sin_a * vel_y_n
     if heading_vel_dot < -0.1 and speed_n > 0.05:
-        reward -= 1.0   # 후진 패널티 (소)
+        reward -= 1.0
 
-    # ② 차선 침범 역주행: 앞으로 가고 있는데 도로 방향과 반대
-    #    교차로(dir=[0,0])는 방향 정보 없으므로 제외
+    # ② 차선 침범 역주행 (앞으로 가는데 도로 방향과 반대)
     dir_x = state[24]
     dir_y = state[25]
     if dir_x != 0.0 or dir_y != 0.0:
         road_vel_dot = vel_x_n * dir_x + vel_y_n * dir_y
-        is_going_forward = heading_vel_dot >= 0.0
-        if is_going_forward and road_vel_dot < -0.1:
-            reward -= 5.0   # 차선 침범 역주행 패널티 (대)
+        if heading_vel_dot >= 0.0 and road_vel_dot < -0.1:
+            reward -= 5.0
 
-    # ── 신호 위반 패널티 ──────────────────────────────────────────
-    # _get_traffic_light_info() 에서 차량 진행 방향과 일치하는 신호등만 반환하므로
-    # 이 패널티는 해당 차량이 실제로 따라야 하는 신호등에 대해서만 적용됨
+    # ── 신호 패널티 ───────────────────────────────────────────────
+    # 정지선 위반 패널티는 execute 루프에서 이벤트 기반으로 추가
     tl_exists      = state[27]
     tl_state       = state[28]
-    right_turnable = state[29]   # 1 = 빨간불 우회전 허용
+    right_turnable = state[29]
     if tl_exists == 1:
-        if tl_state == 0 and right_turnable == 0:   # 빨간불 + 우회전 불가
-            # 정지선 위반 패널티는 execute_action_with_duration() 에서 이벤트 기반으로 처리
-            # 여기서는 정지 준수 보상만 지급
+        if tl_state == 0 and right_turnable == 0:   # 빨간불 + 직진/좌회전
             if speed_n <= 0.05:
-                reward += 0.5   # 빨간불에 정지 → 준수 보상
-        elif tl_state == 1:  # 노란불 — 감속해야 함
+                reward += 0.5   # 정지 준수 보상
+        elif tl_state == 1:                          # 노란불
             if speed_n > 0.2:
                 reward -= 2.0 * (speed_n - 0.2)
             else:
@@ -182,12 +162,11 @@ def get_frame_reward(state, is_collision, is_goal,
 
 
 # ============================================================
-# 모델 (기존 DuelingDualHeadNetwork 동일)
+# 모델
 # ============================================================
 class DuelingDualHeadNetwork(nn.Module):
     def __init__(self, input_size, action_size, duration_size, layer_num, max_size):
         super().__init__()
-
         shared_layers = [nn.Linear(input_size, max_size), nn.ReLU()]
         current_size  = max_size
         for _ in range(layer_num - 1):
@@ -216,7 +195,6 @@ class DuelingDualHeadNetwork(nn.Module):
         av = self.action_value_stream(f)
         aa = self.action_advantage_stream(f)
         aq = av + (aa - aa.mean(dim=1, keepdim=True))
-
         dv = self.duration_value_stream(f)
         da = self.duration_advantage_stream(f)
         dq = dv + (da - da.mean(dim=1, keepdim=True))
@@ -224,17 +202,15 @@ class DuelingDualHeadNetwork(nn.Module):
 
 
 # ============================================================
-# 에이전트 (기존 DuelingDoubleDQN_DualHead 동일)
+# 에이전트
 # ============================================================
 class DuelingDoubleDQN_DualHead:
     def __init__(self, input_size=INPUT_SIZE, action_size=8, duration_size=20,
-                 replay_memory_length=100000, num_segments=5,
+                 replay_memory_length=100000,
                  lr=0.0001, layer_num=3, max_size=512):
         self.device        = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.action_size   = action_size
         self.duration_size = duration_size
-        self.layer_num     = layer_num
-        self.max_size      = max_size
 
         self.model = DuelingDualHeadNetwork(
             input_size, action_size, duration_size, layer_num, max_size
@@ -243,27 +219,17 @@ class DuelingDoubleDQN_DualHead:
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.loss_fn   = nn.SmoothL1Loss()
 
-        self.gamma         = 0.99
-        self.epsilon_min   = 0.1
-        self.segment_epsilon = {i: 1.0 for i in range(num_segments)}
-        self.segment_decay   = 0.998
-        self.learned_epsilon = 0.1
-        self.epsilon         = 1.0
+        self.gamma        = 0.99
+        self.epsilon      = 1.0
+        self.epsilon_min  = 0.1
+        self.epsilon_decay = 0.9995
 
         self.replay_memory        = []
         self.replay_memory_length = replay_memory_length
         self.duration_map = {i: (i + 1) * 3 for i in range(duration_size)}
 
-    def update_epsilon(self, current_segment, learned_until):
-        self.epsilon = (self.learned_epsilon
-                        if current_segment <= learned_until
-                        else self.segment_epsilon.get(current_segment, 1.0))
-
-    def decay_segment_epsilon(self, segment):
-        if segment in self.segment_epsilon:
-            self.segment_epsilon[segment] = max(
-                self.segment_epsilon[segment] * self.segment_decay,
-                self.epsilon_min)
+    def decay_epsilon(self):
+        self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
     def get_real_action(self, action_index):
         actions = {
@@ -285,9 +251,9 @@ class DuelingDoubleDQN_DualHead:
         with torch.no_grad():
             t = torch.FloatTensor(state).unsqueeze(0).to(self.device)
             aq, dq = self.model(t)
-            action = (aq.argmax().item()
-                      if greedy or random.random() >= self.epsilon
-                      else random.randint(0, self.action_size - 1))
+            action  = (aq.argmax().item()
+                       if greedy or random.random() >= self.epsilon
+                       else random.randint(0, self.action_size - 1))
             dur_idx = (dq.argmax().item()
                        if greedy or random.random() >= self.epsilon * 0.3
                        else random.randint(0, self.duration_size - 1))
@@ -299,13 +265,13 @@ class DuelingDoubleDQN_DualHead:
         self.replay_memory.append(memory)
 
     def train_step(self, batch_size, target_net):
-        batch        = random.sample(self.replay_memory, batch_size)
-        states       = torch.tensor([m[0] for m in batch], dtype=torch.float32).to(self.device)
-        actions      = torch.tensor([m[1] for m in batch], dtype=torch.int64).to(self.device)
-        dur_idxs     = torch.tensor([m[2] for m in batch], dtype=torch.int64).to(self.device)
-        rewards      = torch.tensor([m[3] for m in batch], dtype=torch.float32).to(self.device)
-        next_states  = torch.tensor([m[4] for m in batch], dtype=torch.float32).to(self.device)
-        dones        = torch.tensor([m[5] for m in batch], dtype=torch.float32).to(self.device)
+        batch       = random.sample(self.replay_memory, batch_size)
+        states      = torch.tensor([m[0] for m in batch], dtype=torch.float32).to(self.device)
+        actions     = torch.tensor([m[1] for m in batch], dtype=torch.int64).to(self.device)
+        dur_idxs    = torch.tensor([m[2] for m in batch], dtype=torch.int64).to(self.device)
+        rewards     = torch.tensor([m[3] for m in batch], dtype=torch.float32).to(self.device)
+        next_states = torch.tensor([m[4] for m in batch], dtype=torch.float32).to(self.device)
+        dones       = torch.tensor([m[5] for m in batch], dtype=torch.float32).to(self.device)
 
         aq, dq = self.model(states)
         aq_cur = aq.gather(1, actions.unsqueeze(1)).squeeze(1)
@@ -330,378 +296,271 @@ class DuelingDoubleDQN_DualHead:
 
 
 # ============================================================
-# 액션 실행
+# 학습 함수 (다중 에이전트)
 # ============================================================
-def execute_action_with_duration(game, agent, action, duration_frames, ori_checkpoints,
-                                  current_segment, standard_cp, dis_gap, max_time):
-    controls     = agent.get_real_action(action)
-    total_reward = 0
-    done = is_goal = is_collision = is_timeout = False
-    segment_reached = None
-    curr_segment    = current_segment
-    curr_standard_cp = list(standard_cp)
-    curr_dis_gap    = dis_gap
-    speed_list      = []
-
-    # checkpoints_reached 는 pop 하지 않고 커서로만 추적
-    # → game.checkpoints 인덱스가 유지되어 _check_checkpoints() 오작동 방지
-    processed_cp_count = len(game.checkpoints_reached)
-
-    for _ in range(duration_frames):
-        if game.collision or game.goal_reached:
-            break
-
-        prev_distance = math.dist([game.car.x, game.car.y], curr_standard_cp)
-
-        _, step_done, info = game.step(controls)
-        curr_time = game.current_time
-
-        frame_state   = get_data(game, curr_standard_cp, curr_dis_gap)
-        speed_list.append(frame_state[2])   # 정규화 속도
-        curr_distance = math.dist([game.car.x, game.car.y], curr_standard_cp)
-
-        timeout = curr_time / 1000 > max_time
-
-        # 정지선 위반: 빨간불 정지선을 넘은 프레임에 즉각 큰 패널티
-        # 우회전(red_light_right_turn=True)은 합법이므로 패널티 없음
-        if info.get('red_light_crossed') and not info.get('red_light_right_turn'):
-            total_reward -= 300.0
-
-        cp_r = 0
-        if len(game.checkpoints_reached) > processed_cp_count:
-            cp_r       = 50
-            cp_idx     = game.checkpoints_reached[processed_cp_count]  # peek, pop 금지
-            processed_cp_count += 1
-            reached_cp = game.checkpoints[cp_idx]   # game.checkpoints 에서 pop 금지
-
-            try:
-                ori_cp_idx = ori_checkpoints.index(reached_cp)
-            except ValueError:
-                ori_cp_idx = curr_segment
-
-            segment_reached  = curr_segment
-            curr_segment     = ori_cp_idx + 1
-            curr_standard_cp = (ori_checkpoints[ori_cp_idx + 1]
-                                 if ori_cp_idx < len(ori_checkpoints) - 1
-                                 else game.end_pos)
-            curr_dis_gap = math.dist(reached_cp, curr_standard_cp)
-
-        if step_done:
-            if game.goal_reached:  is_goal      = done = True
-            elif game.collision:   is_collision = done = True
-
-        if timeout:
-            is_timeout = True
-            cp_r       = -5000
-            done       = True
-
-        frame_reward = get_frame_reward(
-            frame_state, is_collision, is_goal,
-            curr_distance, curr_time, max_time,
-            cp_r, curr_dis_gap, action,
-            game.car.max_speed, prev_distance
-        )
-        total_reward += frame_reward
-
-        if done:
-            break
-
-    next_state = get_data(game, curr_standard_cp, curr_dis_gap)
-    return {
-        'total_reward':    total_reward,
-        'next_state':      next_state,
-        'done':            done,
-        'current_segment': curr_segment,
-        'standard_cp':     curr_standard_cp,
-        'dis_gap':         curr_dis_gap,
-        'segment_reached': segment_reached,
-        'is_goal':         is_goal,
-        'is_collision':    is_collision,
-        'is_timeout':      is_timeout,
-        'curr_time':       game.current_time,
-        'speed_list':      speed_list,
-    }
-
-
-# ============================================================
-# 평가
-# ============================================================
-def evaluate_model(agent, game, ori_checkpoints, max_time, num_tests=10):
-    agent.model.eval()
-    goal_times, all_speeds = [], []
-    success_count = 0
-
-    for _ in range(num_tests):
-        game.reset()
-        game.checkpoints = copy.deepcopy(ori_checkpoints)
-
-        standard_cp = ori_checkpoints[0] if ori_checkpoints else game.end_pos
-        dis_gap     = math.dist(game.start_pos, standard_cp)
-        done = is_goal = False
-
-        while True:
-            state = get_data(game, standard_cp, dis_gap)
-            _, _, action, _, duration = agent.predict(state, greedy=True)
-            controls = agent.get_real_action(action)
-
-            processed_cp_count = len(game.checkpoints_reached)
-            for _ in range(duration):
-                if game.collision or game.goal_reached:
-                    break
-                _, step_done, _ = game.step(controls)
-                all_speeds.append(game.car.speed * 0.36)
-
-                if len(game.checkpoints_reached) > processed_cp_count:
-                    cp_idx     = game.checkpoints_reached[processed_cp_count]
-                    processed_cp_count += 1
-                    reached_cp = game.checkpoints[cp_idx]
-                    try:
-                        ori_idx = ori_checkpoints.index(reached_cp)
-                    except ValueError:
-                        ori_idx = 0
-                    standard_cp = (ori_checkpoints[ori_idx + 1]
-                                   if ori_idx < len(ori_checkpoints) - 1
-                                   else game.end_pos)
-
-                if step_done:
-                    if game.goal_reached: is_goal = True
-                    done = True
-
-                if game.current_time / 1000 > max_time:
-                    done = True
-                if done:
-                    break
-            if done:
-                break
-
-        if is_goal:
-            success_count += 1
-            goal_times.append(game.current_time / 1000)
-
-    agent.model.train()
-    avg_speed = float(np.mean(all_speeds)) if all_speeds else 0.0
-    return (success_count == num_tests), avg_speed, success_count
-
-
-# ============================================================
-# 학습 함수
-# ============================================================
-def train_headless(max_episode=300000, action_size=8, duration_size=6,
-                   replay_length=100000, target_update=2000, log_interval=100,
-                   save_interval=1000, batch_size=512,
+def train_headless(vehicle_config_paths,
+                   max_episode=300000,
+                   action_size=8, duration_size=6,
+                   replay_length=50000,
+                   target_update=2000,
+                   log_interval=100,
+                   batch_size=512,
                    track_file="./track_data.json",
-                   car_json_path="./racing_car.json",
-                   layer_num=3, max_size=512, lr=0.0001, 
-                   CHECKPOINT_ORDER=None):
+                   layer_num=3, max_size=512, lr=0.0001,
+                   max_time=30):
     """
-    Dueling Double DQN + Dual Head 학습
+    다중 에이전트 독립 DDDQN 학습.
 
-    ★ CHECKPOINT_ORDER: track_data.json 에 저장된 체크포인트의 인덱스 번호를
-      원하는 순서대로 나열하세요.
-      예) [0, 1, 2, 3] → 트랙에 찍힌 0번→1번→2번→3번 순으로 진행
-          [2, 0, 3, 1] → 순서를 바꿔서 진행도 가능
-      실제 좌표는 track_data.json 에서 자동으로 불러옵니다.
+    vehicle_config_paths: list[str] — 차량 설정 파일 경로 목록
+      예) ["./vehicles/vehicle_1.json", "./vehicles/vehicle_2.json"]
+
+    각 에이전트:
+      - 독립 네트워크 + 리플레이 버퍼 + epsilon
+      - 차량 JSON의 checkpoints 마지막 항목 = GOAL
+      - 주행 중 다른 차량을 센서로 감지 (레이캐스팅에 bounding box 포함)
     """
 
     pygame.init()
-    game = RacingGame(track_file, car_json_path=car_json_path, headless=True)
+    game = RacingGame(track_file, vehicle_configs=vehicle_config_paths, headless=True)
+    n    = game.n_agents
 
-    # 인덱스 순서대로 실제 좌표 조합
-    all_cps = game.checkpoints   # track_data.json 에서 로드된 전체 체크포인트
-    ori_checkpoints = [all_cps[i] for i in CHECKPOINT_ORDER if i < len(all_cps)]
-    game.checkpoints = copy.deepcopy(ori_checkpoints)
-    num_segments      = len(ori_checkpoints) + 1   # 체크포인트 수 + 골 세그먼트
+    # 에이전트 생성
+    agents      = [DuelingDoubleDQN_DualHead(INPUT_SIZE, action_size, duration_size,
+                                              replay_length, lr, layer_num, max_size)
+                   for _ in range(n)]
+    target_nets = [DuelingDoubleDQN_DualHead(INPUT_SIZE, action_size, duration_size,
+                                              0, lr, layer_num, max_size)
+                   for _ in range(n)]
+    for i in range(n):
+        target_nets[i].model.load_state_dict(agents[i].model.state_dict())
+        target_nets[i].model.eval()
 
-    # 로그 설정
+    # 로그
     lr_str       = str(lr).replace(".", "_")
-    log_filename = f"train_new_map_lr_{lr_str}_L{layer_num}_S{max_size}.txt"
+    log_filename = f"train_ma_{n}agents_lr_{lr_str}_L{layer_num}_S{max_size}.txt"
     log_file     = open(log_filename, 'w', encoding='utf-8')
 
     def log(msg):
-        ts  = time.strftime('%Y-%m-%d %H:%M:%S')
+        ts   = time.strftime('%Y-%m-%d %H:%M:%S')
         line = f"[{ts}] {msg}\n"
         log_file.write(line); log_file.flush(); print(msg)
 
     log("=" * 60)
-    log("DUELING DOUBLE DQN + DUAL HEAD  |  NEW MAP")
-    log(f"  Device      : {torch.device('cuda' if torch.cuda.is_available() else 'cpu')}")
-    log(f"  Input Size  : {INPUT_SIZE}")
-    log(f"  Actions     : {action_size}  Durations: {duration_size}")
-    log(f"  Layer       : {layer_num}  MaxSize: {max_size}  LR: {lr}")
-    log(f"  Checkpoints : {num_segments - 1}개")
-    log(f"  Track file  : {track_file}")
+    log(f"MULTI-AGENT DDDQN  |  {n} agents")
+    log(f"  Device : {agents[0].device}")
+    log(f"  Input  : {INPUT_SIZE}  Actions: {action_size}  Durations: {duration_size}")
+    log(f"  Layer  : {layer_num}  MaxSize: {max_size}  LR: {lr}")
+    log(f"  Track  : {track_file}")
+    for i in range(n):
+        cps = game.car_checkpoints[i]
+        log(f"  Agent{i+1}: {len(cps)} nav cps → goal {game.car_goals[i]}")
     log("=" * 60)
 
-    policy_net = DuelingDoubleDQN_DualHead(
-        input_size=INPUT_SIZE, action_size=action_size, duration_size=duration_size,
-        replay_memory_length=replay_length, num_segments=num_segments,
-        lr=lr, layer_num=layer_num, max_size=max_size
-    )
-    target_net = DuelingDoubleDQN_DualHead(
-        input_size=INPUT_SIZE, action_size=action_size, duration_size=duration_size,
-        replay_memory_length=0, num_segments=num_segments,
-        lr=lr, layer_num=layer_num, max_size=max_size
-    )
-    target_net.model.load_state_dict(policy_net.model.state_dict())
-    target_net.model.eval()
+    # ── 에피소드 루프용 초기 상태 ────────────────────────────────
+    def _reset_episode_state():
+        """에피소드 시작 시 에이전트별 상태 초기화"""
+        std_cps = []
+        dis_gps = []
+        for i in range(n):
+            nav_cps = game.car_checkpoints[i]
+            cj      = game.car_jsons[i]
+            sp_idx  = cj.get('start_point', i % max(len(game.start_positions), 1))
+            sp      = (game.start_positions[sp_idx % len(game.start_positions)]
+                       if game.start_positions else [game.width//2, game.height//2])
+            first   = nav_cps[0] if nav_cps else game.car_goals[i]
+            std_cps.append(list(first) if first else [sp[0], sp[1]])
+            dis_gps.append(math.dist(sp, first) if first else 1.0)
+        return std_cps, dis_gps
 
-    episode          = 0
-    action_step      = 0
-    max_time         = 10
-    goal_counts      = 0
-    best_avg_speed   = 0.0
-    save_episode     = 0
-    saved_counts     = 0
-    episode_rewards  = []
-    current_ep_reward = 0
-    action_losses    = []
-    duration_losses  = []
-    all_speed_list   = []
-    start_time       = time.time()
-    last_log_time    = start_time
+    standard_cps, dis_gaps = _reset_episode_state()
 
-    segment_counts   = {i: 0 for i in range(num_segments)}
-    segment_learned  = {i: False for i in range(num_segments)}
-    segment_threshold = 50
-    current_segment  = 0
+    # 에이전트별 duration 추적
+    remaining_frames  = [0]    * n
+    pending_states    = [None] * n
+    pending_actions   = [0]    * n
+    pending_dur_idxs  = [0]    * n
+    accumulated_rews  = [0.0]  * n
+    processed_cp_cnts = [0]    * n
+    current_controls  = [agents[i].get_real_action(0) for i in range(n)]
+    active            = [True] * n
 
-    standard_cp = ori_checkpoints[0] if ori_checkpoints else game.end_pos
-    dis_gap     = math.dist(game.start_pos, standard_cp)
+    episode      = 0
+    action_step  = 0
+    goal_counts  = [0] * n
+    ep_rewards   = [[] for _ in range(n)]
+    ep_rew_buf   = [0.0] * n
+    action_losses   = [[] for _ in range(n)]
+    duration_losses = [[] for _ in range(n)]
+    start_time   = time.time()
+    last_log_time = start_time
 
     log(f"\nTraining started  {time.strftime('%H:%M:%S')}")
     log("-" * 60)
 
     while episode < max_episode:
-        # 어느 세그먼트까지 학습됐는지 파악
-        learned_until = -1
-        for i in range(num_segments):
-            if segment_learned[i]: learned_until = i
-            else: break
 
-        policy_net.update_epsilon(current_segment, learned_until)
+        # ── Phase 1: 새 행동 결정 (duration 만료된 에이전트) ────────
+        for i in range(n):
+            if remaining_frames[i] <= 0 and active[i]:
+                state = get_data(game, i, standard_cps[i], dis_gaps[i])
 
-        state = get_data(game, standard_cp, dis_gap)
-        _, _, action, duration_idx, duration = policy_net.predict(state)
+                # 이전 경험 저장 (있으면)
+                if pending_states[i] is not None:
+                    agents[i].add_memory([
+                        pending_states[i], pending_actions[i], pending_dur_idxs[i],
+                        accumulated_rews[i], state, 0.0
+                    ])
+                    ep_rew_buf[i]     += accumulated_rews[i]
+                    accumulated_rews[i] = 0.0
 
-        result = execute_action_with_duration(
-            game, policy_net, action, duration,
-            ori_checkpoints, current_segment, standard_cp, dis_gap, max_time
-        )
+                _, _, action, dur_idx, duration = agents[i].predict(state)
+                pending_states[i]    = state
+                pending_actions[i]   = action
+                pending_dur_idxs[i]  = dur_idx
+                current_controls[i]  = agents[i].get_real_action(action)
+                remaining_frames[i]  = duration
 
-        total_reward     = result['total_reward']
-        next_state       = result['next_state']
-        done             = result['done']
-        current_segment  = result['current_segment']
-        standard_cp      = result['standard_cp']
-        dis_gap          = result['dis_gap']
-        all_speed_list  += result['speed_list']
+        # ── Phase 2: 환경 스텝 ──────────────────────────────────────
+        prev_dists = [
+            math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
+            if active[i] else 0.0
+            for i in range(n)
+        ]
 
-        # [state, action, duration_idx, reward, next_state, done]
-        policy_net.add_memory([state, action, duration_idx, total_reward, next_state, done])
-        current_ep_reward += total_reward
-        action_step       += 1
+        results    = game.step(current_controls)
+        action_step += 1
 
-        # 세그먼트 도달 기록
-        if result['segment_reached'] is not None:
-            seg = result['segment_reached']
-            segment_counts[seg] += 1
-            if segment_counts[seg] >= segment_threshold and not segment_learned[seg]:
-                segment_learned[seg] = True
-                log(f"\n★ Segment {seg} 학습 완료! (Episode {episode})\n")
+        # ── Phase 3: 결과 처리 ─────────────────────────────────────
+        for i, result in enumerate(results):
+            if not active[i]:
+                continue
 
-        if result['is_goal']:
-            goal_seg = len(ori_checkpoints)
-            segment_counts[goal_seg] += 1
-            if segment_counts[goal_seg] >= segment_threshold and not segment_learned[goal_seg]:
-                segment_learned[goal_seg] = True
-                log(f"\n★ GOAL segment 학습 완료! (Episode {episode})\n")
+            # 체크포인트 진행
+            cp_r = 0
+            if result['cp_reached']:
+                cp_r = 50
+                processed_cp_cnts[i] += 1
+                nav_cps = game.car_checkpoints[i]
+                if processed_cp_cnts[i] < len(nav_cps):
+                    new_target = nav_cps[processed_cp_cnts[i]]
+                else:
+                    new_target = game.car_goals[i]
+                if new_target:
+                    dis_gaps[i]    = math.dist(standard_cps[i], new_target)
+                    standard_cps[i] = list(new_target)
 
-        if done:
+            curr_dist  = math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
+            frame_state = get_data(game, i, standard_cps[i], dis_gaps[i])
+            is_timeout  = (game.current_time or 0) / 1000 > max_time
+
+            frame_reward = get_frame_reward(
+                frame_state,
+                result['collision'], result['goal_reached'],
+                curr_dist, game.current_time or 0, max_time,
+                cp_r, dis_gaps[i], pending_actions[i],
+                game.cars[i].max_speed, prev_dists[i]
+            )
+
+            # 정지선 위반 패널티 (이벤트 기반)
+            if result['red_light_crossed'] and not result['red_light_right_turn']:
+                frame_reward -= 300.0
+
+            # 타임아웃 추가 패널티
+            if is_timeout:
+                frame_reward -= 5000.0
+
+            accumulated_rews[i] += frame_reward
+            remaining_frames[i] -= 1
+
+            done_i = result['collision'] or result['goal_reached'] or is_timeout
+
+            if done_i:
+                next_state = get_data(game, i, standard_cps[i], dis_gaps[i])
+                agents[i].add_memory([
+                    pending_states[i], pending_actions[i], pending_dur_idxs[i],
+                    accumulated_rews[i], next_state, 1.0
+                ])
+                ep_rew_buf[i]     += accumulated_rews[i]
+                accumulated_rews[i] = 0.0
+                pending_states[i]   = None
+                active[i]           = False
+
+                if result['goal_reached']:
+                    goal_counts[i] += 1
+
+        # ── Phase 4: 학습 ───────────────────────────────────────────
+        if action_step % 5 == 0:
+            for i in range(n):
+                if len(agents[i].replay_memory) > batch_size:
+                    tl, al, dl = agents[i].train_step(batch_size, target_nets[i])
+                    action_losses[i].append(al)
+                    duration_losses[i].append(dl)
+
+        if action_step % target_update == 0:
+            for i in range(n):
+                target_nets[i].model.load_state_dict(agents[i].model.state_dict())
+                target_nets[i].model.eval()
+
+        # ── Phase 5: 에피소드 종료 ──────────────────────────────────
+        if not any(active):
             episode += 1
-            episode_rewards.append(current_ep_reward)
 
-            if current_segment > learned_until:
-                policy_net.decay_segment_epsilon(current_segment)
+            for i in range(n):
+                ep_rewards[i].append(ep_rew_buf[i])
+                agents[i].decay_epsilon()
 
-            # 정기 로그
+            # 로그
             if episode % log_interval == 0:
                 elapsed     = time.time() - last_log_time
                 eps_per_sec = log_interval / elapsed if elapsed > 0 else 0
-                avg_reward  = np.mean(episode_rewards[-log_interval:]) if episode_rewards else 0
-                avg_a_loss  = np.mean(action_losses[-100:]) if action_losses else 0
-                avg_d_loss  = np.mean(duration_losses[-100:]) if duration_losses else 0
-                avg_spd_kmh = (np.mean(all_speed_list) * game.car.max_speed * 0.36
-                               if all_speed_list else 0)
-                log(f"[Ep {episode:5d}] Goal:{goal_counts:3d} | Seg:{current_segment} | "
-                    f"ε:{policy_net.epsilon:.3f} | Reward:{avg_reward:8.1f} | "
-                    f"A_Loss:{avg_a_loss:.3f} | D_Loss:{avg_d_loss:.3f} | "
-                    f"Speed:{eps_per_sec:.1f}ep/s | AvgSpd:{avg_spd_kmh:.1f}km/h | "
-                    f"{time.strftime('%H:%M:%S')}")
-                all_speed_list = []
-                last_log_time  = time.time()
+                avg_rews    = [
+                    np.mean(ep_rewards[i][-log_interval:]) if ep_rewards[i] else 0.0
+                    for i in range(n)
+                ]
+                avg_a_losses = [
+                    np.mean(action_losses[i][-100:]) if action_losses[i] else 0.0
+                    for i in range(n)
+                ]
+                rew_str  = " | ".join(f"A{i+1}:{avg_rews[i]:7.1f}" for i in range(n))
+                loss_str = " | ".join(f"A{i+1}:{avg_a_losses[i]:.3f}" for i in range(n))
+                goal_str = " ".join(f"A{i+1}:{goal_counts[i]}" for i in range(n))
+                eps_str  = " ".join(f"A{i+1}:{agents[i].epsilon:.3f}" for i in range(n))
+                log(f"[Ep {episode:5d}] Goals:[{goal_str}] | ε:[{eps_str}] | "
+                    f"Reward:[{rew_str}] | ALoss:[{loss_str}] | "
+                    f"{eps_per_sec:.1f}ep/s | {time.strftime('%H:%M:%S')}")
+                last_log_time = time.time()
 
-            if result['is_goal']:
-                goal_counts += 1
-                log(f"  GOAL! Ep {episode}  Total:{goal_counts}")
-
-                if goal_counts > 50:
-                    saved_counts += 1
-                    all_ok, avg_spd, sc = evaluate_model(
-                        policy_net, game, ori_checkpoints, max_time, num_tests=10)
-
-                    if all_ok:
-                        log(f"  Eval: {sc}/10 success  AvgSpd:{avg_spd:.1f}km/h")
-                        if avg_spd > best_avg_speed:
-                            old_path = (f"new_map_best_lr_{lr_str}_L{layer_num}_S{max_size}"
-                                        f"_E{save_episode}_T{str(round(best_avg_speed,3)).replace('.','_')}.pth")
-                            if os.path.exists(old_path):
-                                os.remove(old_path)
-                            best_avg_speed = avg_spd
-                            save_episode   = episode
-                            save_path = (f"new_map_best_lr_{lr_str}_L{layer_num}_S{max_size}"
-                                         f"_E{save_episode}_T{str(round(best_avg_speed,3)).replace('.','_')}.pth")
-                            torch.save(policy_net.model.state_dict(), save_path)
-                            log(f"  Best model saved: {save_path}")
-                            saved_counts = 0
-                    else:
-                        log(f"  Eval: {sc}/10 — not saved")
-
-                    game.reset()
-                    game.checkpoints = copy.deepcopy(ori_checkpoints)
-
-            # 에피소드 리셋
+            # 리셋
             game.reset()
-            game.checkpoints    = copy.deepcopy(ori_checkpoints)
-            current_segment     = 0
-            standard_cp         = ori_checkpoints[0] if ori_checkpoints else game.end_pos
-            dis_gap             = math.dist(game.start_pos, standard_cp)
-            current_ep_reward   = 0
+            standard_cps, dis_gaps = _reset_episode_state()
+            remaining_frames  = [0]    * n
+            pending_states    = [None] * n
+            pending_actions   = [0]    * n
+            pending_dur_idxs  = [0]    * n
+            accumulated_rews  = [0.0]  * n
+            processed_cp_cnts = [0]    * n
+            current_controls  = [agents[i].get_real_action(0) for i in range(n)]
+            active            = [True] * n
+            ep_rew_buf        = [0.0]  * n
 
-        # 학습 스텝
-        if action_step % 5 == 0 and len(policy_net.replay_memory) > batch_size:
-            t_loss, a_loss, d_loss = policy_net.train_step(batch_size, target_net)
-            action_losses.append(a_loss)
-            duration_losses.append(d_loss)
-
-        if action_step % target_update == 0:
-            target_net.model.load_state_dict(policy_net.model.state_dict())
-            target_net.model.eval()
-
-        if saved_counts >= 500:
-            break
-
+    # ── 학습 완료 ─────────────────────────────────────────────────
     total_time = time.time() - start_time
     log("\n" + "=" * 60)
     log("TRAINING COMPLETED")
     log(f"  Total Episodes : {episode}")
-    log(f"  Total Goals    : {goal_counts}")
-    log(f"  Best Avg Speed : {best_avg_speed:.3f} km/h")
+    log(f"  Total Goals    : {dict(enumerate(goal_counts, 1))}")
     log(f"  Training Time  : {total_time/60:.1f} min")
     log("=" * 60)
-
     log_file.close()
     pygame.quit()
-    return policy_net
+
+    # 최종 모델 저장
+    for i in range(n):
+        path = f"agent{i+1}_final_ep{episode}.pth"
+        torch.save(agents[i].model.state_dict(), path)
+        print(f"  Saved: {path}")
+
+    return agents
 
 
 # ============================================================
@@ -712,19 +571,26 @@ if __name__ == "__main__":
     parser.add_argument("--max_size",   type=int,   default=512)
     parser.add_argument("--lr",         type=float, default=0.0003)
     parser.add_argument("--batch_size", type=int,   default=512)
+    parser.add_argument("--max_time",   type=int,   default=30)
     args = parser.parse_args()
 
     train_headless(
+        vehicle_config_paths=[
+            "./vehicles/vehicle_1.json",
+            "./vehicles/vehicle_2.json",
+            "./vehicles/vehicle_3.json",
+            "./vehicles/vehicle_4.json",
+        ],
         max_episode   = 300000,
         action_size   = 8,
         duration_size = 6,
-        replay_length = 100000,
+        replay_length = 50000,
         target_update = 2000,
         log_interval  = 100,
         layer_num     = args.layer_num,
         max_size      = args.max_size,
         lr            = args.lr,
         batch_size    = args.batch_size,
-        car_json_path = "./vehicle_config.json",
         track_file    = "./track_data.json",
+        max_time      = args.max_time,
     )

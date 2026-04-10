@@ -1,0 +1,21 @@
+{
+  "_type": "소형차 (Compact) — e.g. Avante / i30",
+  "_scale_note": "1 pixel = 약 5cm. 트랙 폭 100px = 5m",
+
+  "max_speed": 340,
+  "acceleration_force": 160,
+  "brake_force": 340,
+  "friction": 0.97,
+  "lateral_friction": 0.92,
+  "drift_friction": 0.33,
+  "brake_factor": 0.92,
+  "turn_speed": 2.8,
+  "sensor_range": 240,
+  "width": 18,
+  "length": 36,
+  "speed_friction_reduction": 0.03,
+  "drift_extra_friction_reduction": 0.05,
+  "brake_speed_penalty": 0.08,
+  "start_point": 1,
+  "checkpoints": [5, 6, 2, 3, 4]
+}

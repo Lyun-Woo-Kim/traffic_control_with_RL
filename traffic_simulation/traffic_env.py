@@ -8,26 +8,24 @@ from typing import Tuple, Optional, List
 # ============================================================
 # 상수
 # ============================================================
-SENSOR_ANGLES = [i * (math.pi / 4) for i in range(8)]  # 0°,45°,90°,...,315° (차량 헤딩 기준 오프셋)
-FORWARD_SENSOR_IDX = [0, 1, 7]                           # 전방 센서: 정면(0), 우전방(1), 좌전방(7)
-TL_ENCODE = {'green': 1.0, 'yellow': 0.5, 'red': -1.0}  # 신호등 인코딩
+SENSOR_ANGLES      = [i * (math.pi / 4) for i in range(8)]
+FORWARD_SENSOR_IDX = [0, 1, 7]
+TL_ENCODE          = {'green': 1.0, 'yellow': 0.5, 'red': -1.0}
+STATE_SIZE         = 16
 
-# state 크기: 센서8 + 신호등1 + 도로정보3 + 속도2 + 헤딩2 = 16
-STATE_SIZE = 16
+# 에이전트별 차량 색상 (최대 20대)
+AGENT_COLORS = [
+    (0,100,255),(255,80,0),(0,180,0),(180,0,180),(200,170,0),
+    (0,180,180),(180,80,0),(80,0,180),(220,0,100),(0,200,80),
+    (120,180,255),(255,160,80),(80,220,80),(220,80,220),(220,220,80),
+    (80,220,220),(220,160,80),(160,80,220),(220,80,160),(80,180,80),
+]
 
 
 # ============================================================
 # Car
 # ============================================================
 class Car:
-    """
-    실제같은 차량 물리 시뮬레이션
-    - 가속/브레이크
-    - 조향 (속도에 따른 민감도)
-    - 드리프트
-    - 마찰과 관성
-    - 속도에 비례한 동적 friction
-    """
     def __init__(self, x, y, angle=0, car_info=None):
         self.x = x
         self.y = y
@@ -82,7 +80,7 @@ class Car:
             self.lateral_friction = self._original_lateral_friction + (1.0 - self._original_lateral_friction) * lateral_adjustment
 
     def _calculate_dynamic_brake_factor(self):
-        speed_ratio = self._calculate_speed_ratio()
+        speed_ratio  = self._calculate_speed_ratio()
         speed_penalty = speed_ratio * speed_ratio * self.brake_speed_penalty
         return min(self.base_brake_factor + (1.0 - self.base_brake_factor) * speed_penalty, 0.99)
 
@@ -145,11 +143,11 @@ class Car:
         corners = [(-hl,-hw),(hl,-hw),(hl,hw),(-hl,hw)]
         return [(self.x + dx*cos_a - dy*sin_a, self.y + dx*sin_a + dy*cos_a) for dx,dy in corners]
 
-    def draw(self, surface, camera_offset=(0, 0)):
+    def draw(self, surface, camera_offset=(0, 0), color=None):
         corners = self.get_corners()
         screen_corners = [(x-camera_offset[0], y-camera_offset[1]) for x,y in corners]
-        color = (255, 100, 100) if self.is_drifting else (0, 100, 255)
-        pygame.draw.polygon(surface, color, screen_corners)
+        draw_color = color if color else ((255,100,100) if self.is_drifting else (0,100,255))
+        pygame.draw.polygon(surface, draw_color, screen_corners)
         pygame.draw.polygon(surface, (0,0,0), screen_corners, 2)
 
         cos_a, sin_a = math.cos(self.angle), math.sin(self.angle)
@@ -176,16 +174,14 @@ class Car:
 # ============================================================
 class RacingGame:
     """
-    2D 탑뷰 레이싱 게임
-    - 커스텀 트랙 로드 (track_data.json / track.json 호환)
-    - 실제같은 차량 물리
-    - 충돌 감지
-    - 강화학습 인터페이스 + get_state()
-    - headless 모드 지원
+    2D 탑뷰 레이싱 게임 — 다중 에이전트 지원
+    - vehicle_configs: 단일 경로(str) 또는 경로 리스트(list[str])
+    - 각 차량 JSON의 checkpoints 마지막 항목 = 그 차량의 GOAL
+    - step(controls_list) → 에이전트별 result dict 리스트 반환
     """
 
     def __init__(self, track_file="track_data.json", width=1200, height=800,
-                 car_json_path="racing_car.json", headless=False):
+                 vehicle_configs=None, car_json_path=None, headless=False):
         self.headless = headless
 
         if headless:
@@ -200,7 +196,20 @@ class RacingGame:
         self.height = height
         self.clock  = pygame.time.Clock()
         self.fps    = 60
-        self.car_json = json.load(open(car_json_path, 'r', encoding='utf-8'))
+
+        # vehicle_configs 정규화 (하위 호환: car_json_path)
+        if vehicle_configs is None and car_json_path is not None:
+            vehicle_configs = [car_json_path]
+        elif vehicle_configs is None:
+            vehicle_configs = ["./vehicle_config.json"]
+        elif isinstance(vehicle_configs, str):
+            vehicle_configs = [vehicle_configs]
+
+        self.n_agents  = len(vehicle_configs)
+        self.car_jsons = []
+        for p in vehicle_configs:
+            with open(p, 'r', encoding='utf-8') as f:
+                self.car_jsons.append(json.load(f))
 
         self.WHITE = (255, 255, 255)
         self.BLACK = (0,   0,   0)
@@ -208,19 +217,16 @@ class RacingGame:
         self.RED   = (200, 0,   0)
         self.GRAY  = (100, 100, 100)
 
-        # 트랙 로드 (direction_grid, lane_data, traffic_lights 포함)
-        self.track_surface  = None
-        self.track_mask     = None
-        self.direction_grid = {}
-        self.lane_data      = []
-        self.traffic_lights = []
-        self.lane_segments: List[Tuple] = []   # 레이캐스팅용 차선 세그먼트 목록
+        self.track_surface   = None
+        self.track_mask      = None
+        self.direction_grid  = {}
+        self.lane_data       = []
+        self.traffic_lights  = []
+        self.lane_segments: List[Tuple] = []
         self.start_positions = []
-        self.start_pos       = None
         self.end_pos         = None
-        self.checkpoints     = []
+        self.checkpoints     = []    # 트랙 전체 체크포인트 좌표 목록
 
-        # 순차 신호등 상태
         self.tl_green_ms  = 7000
         self.tl_yellow_ms = 3000
         self.tl_seq_idx   = 0
@@ -229,26 +235,32 @@ class RacingGame:
 
         self._load_track(track_file)
 
-        # car_json 의 start_point 번호로 시작 위치 선택
-        sp_idx = self.car_json.get('start_point', 0)
-        if self.start_positions:
-            sp_idx = sp_idx if sp_idx < len(self.start_positions) else 0
-            self.start_pos = self.start_positions[sp_idx]
-        sp = self.start_pos or [width//2, height//2]
-        self.car = Car(sp[0], sp[1], angle=0, car_info=self.car_json)
+        # 다중 차량 상태
+        self.cars             = []
+        self.car_checkpoints  = []   # 에이전트별 nav waypoint 좌표 리스트 (goal 제외)
+        self.car_goals        = []   # 에이전트별 goal 좌표
+        self.car_cp_reached   = []   # 에이전트별 도달한 nav cp 인덱스 리스트
+        self.car_collisions   = []
+        self.car_goal_reached = []
+        self.car_end_times    = []
+        self.tl_prev_dots     = {}   # {(car_idx, tl_idx): prev_dot}
 
-        self.camera_x = 0
-        self.camera_y = 0
+        self._init_cars()
+
+        # 하위 호환: self.car, self.start_pos (car 0 기준)
+        self.car       = self.cars[0] if self.cars else None
+        self.start_pos = self.start_positions[0] if self.start_positions else None
+
+        self.camera_x = self.camera_y = 0
         self.camera_smooth = 0.1
 
-        self.collision         = False
-        self.goal_reached      = False
-        self.total_distance    = 0
-        self.start_time        = pygame.time.get_ticks()
-        self.end_time          = None
-        self.current_time      = None
-        self.checkpoints_reached = []
-        self.tl_prev_dots      = {}   # {tl_index: prev_dot}  정지선 위반 감지용
+        self.collision          = False
+        self.goal_reached       = False
+        self.total_distance     = 0
+        self.start_time         = pygame.time.get_ticks()
+        self.end_time           = None
+        self.current_time       = None
+        self.checkpoints_reached = []   # 하위 호환 (car 0)
 
         if not headless:
             try:
@@ -261,15 +273,55 @@ class RacingGame:
             self.font = self.big_font = None
 
     # ----------------------------------------------------------
+    # 차량 초기화
+    # ----------------------------------------------------------
+    def _init_cars(self):
+        self.cars             = []
+        self.car_checkpoints  = []
+        self.car_goals        = []
+        self.car_cp_reached   = []
+        self.car_collisions   = []
+        self.car_goal_reached = []
+        self.car_end_times    = []
+
+        for i, cj in enumerate(self.car_jsons):
+            sp_idx = cj.get('start_point', i % max(len(self.start_positions), 1))
+            if self.start_positions:
+                sp = self.start_positions[sp_idx % len(self.start_positions)]
+            else:
+                sp = [self.width // 2, self.height // 2]
+
+            self.cars.append(Car(sp[0], sp[1], angle=0, car_info=cj))
+
+            # 체크포인트 로드: 마지막 = GOAL, 나머지 = nav waypoints
+            cp_indices = cj.get('checkpoints', [])
+            if cp_indices and self.checkpoints:
+                cp_coords = [self.checkpoints[j] for j in cp_indices if j < len(self.checkpoints)]
+                if cp_coords:
+                    goal    = cp_coords[-1]
+                    nav_cps = cp_coords[:-1]
+                else:
+                    goal    = self.end_pos
+                    nav_cps = []
+            else:
+                nav_cps = self.checkpoints[:]
+                goal    = self.end_pos
+
+            self.car_checkpoints.append(nav_cps)
+            self.car_goals.append(goal)
+            self.car_cp_reached.append([])
+            self.car_collisions.append(False)
+            self.car_goal_reached.append(False)
+            self.car_end_times.append(None)
+
+    # ----------------------------------------------------------
     # 트랙 로드
     # ----------------------------------------------------------
     def _load_track(self, filename):
-        """track_data.json (신버전) 및 track.json (구버전) 모두 지원"""
         try:
             with open(filename, 'r') as f:
                 data = json.load(f)
 
-            # ── 구버전: track_mask 픽셀 데이터 ──────────────────
             if 'track_mask' in data:
                 track_mask = np.array(data['track_mask'], dtype=np.uint8)
                 th, tw = track_mask.shape
@@ -282,16 +334,12 @@ class RacingGame:
                 self.track_surface = surf
                 self.track_mask    = track_mask
 
-            # ── 신버전: direction_grid + lane_data ───────────────
             self.direction_grid = data.get('direction_grid', {})
             self.lane_data      = data.get('lane_data', [])
 
-            # lane_data 가 있으면 트랙 서피스 + 마스크 재생성
             if self.lane_data:
                 self.track_surface, self.track_mask = self._build_track_from_lane_data()
 
-            # ── 신호등 로드 (timer 필드 추가) ────────────────────
-            # 순차 신호등 전역 duration 로드
             self.tl_green_ms  = data.get('tl_green_ms',  7000)
             self.tl_yellow_ms = data.get('tl_yellow_ms', 3000)
 
@@ -305,7 +353,6 @@ class RacingGame:
                     entry['dir'] = tl['dir']
                 self.traffic_lights.append(entry)
 
-            # 다중 시작 위치 로드 (신버전: start_positions, 구버전: start_pos 호환)
             if 'start_positions' in data:
                 self.start_positions = data['start_positions']
             elif 'start_pos' in data and data['start_pos'] is not None:
@@ -315,8 +362,6 @@ class RacingGame:
 
             self.end_pos     = data.get('end_pos')
             self.checkpoints = data.get('checkpoints', [])
-
-            # 레이캐스팅용 차선 세그먼트 빌드
             self.lane_segments = self._build_lane_segments()
 
             if not self.headless:
@@ -334,7 +379,6 @@ class RacingGame:
             self.track_mask[200:600, 200:1000] = 255
 
     def _build_track_from_lane_data(self):
-        """lane_data의 left/right 경계로 track_surface + track_mask 생성"""
         surf = pygame.Surface((self.width, self.height))
         surf.fill(self.WHITE)
         for ld in self.lane_data:
@@ -344,10 +388,10 @@ class RacingGame:
                 continue
             for i in range(len(left) - 1):
                 poly = [
-                    (int(left[i][0]),   int(left[i][1])),
-                    (int(left[i+1][0]), int(left[i+1][1])),
-                    (int(right[i+1][0]),int(right[i+1][1])),
-                    (int(right[i][0]),  int(right[i][1])),
+                    (int(left[i][0]),    int(left[i][1])),
+                    (int(left[i+1][0]),  int(left[i+1][1])),
+                    (int(right[i+1][0]), int(right[i+1][1])),
+                    (int(right[i][0]),   int(right[i][1])),
                 ]
                 pygame.draw.polygon(surf, self.GRAY, poly)
         arr  = pygame.surfarray.array3d(surf)
@@ -355,14 +399,7 @@ class RacingGame:
         mask = (gray < 240).astype(np.uint8) * 255
         return surf, mask
 
-    # ----------------------------------------------------------
-    # 레이캐스팅용 차선 세그먼트 빌드
-    # ----------------------------------------------------------
     def _build_lane_segments(self) -> List[Tuple]:
-        """
-        lane_data의 left_lane, center_lane, right_lane을
-        ((x1,y1),(x2,y2)) 형태의 세그먼트 리스트로 변환.
-        """
         segs = []
         for ld in self.lane_data:
             for key in ('left_lane', 'center_lane', 'right_lane'):
@@ -376,14 +413,11 @@ class RacingGame:
     # 신호등 업데이트
     # ----------------------------------------------------------
     def _update_traffic_lights(self, dt: float):
-        """dt: 밀리초. 순차 신호등: 0번→1번→... 순으로 초록→노랑→(다음 번호 초록)"""
         n = len(self.traffic_lights)
         if n == 0:
             return
-
         self.tl_seq_timer += dt
         duration = self.tl_green_ms if self.tl_seq_phase == 'green' else self.tl_yellow_ms
-
         if self.tl_seq_timer >= duration:
             self.tl_seq_timer -= duration
             if self.tl_seq_phase == 'green':
@@ -391,22 +425,16 @@ class RacingGame:
             else:
                 self.tl_seq_idx   = (self.tl_seq_idx + 1) % n
                 self.tl_seq_phase = 'green'
-
         for i, tl in enumerate(self.traffic_lights):
             tl['state'] = self.tl_seq_phase if i == self.tl_seq_idx else 'red'
 
     # ----------------------------------------------------------
-    # ── STATE 생성 관련 함수들 ──────────────────────────────
+    # 레이캐스팅
     # ----------------------------------------------------------
-
     @staticmethod
     def _ray_segment_intersect(ox, oy, dx, dy, ax, ay, bx, by) -> Optional[float]:
-        """
-        반직선 (ox,oy) + t*(dx,dy) 와 선분 (ax,ay)-(bx,by) 의 교점까지 거리 t 반환.
-        교점이 없으면 None.
-        """
         sx, sy = bx - ax, by - ay
-        denom = dx * sy - dy * sx
+        denom  = dx * sy - dy * sx
         if abs(denom) < 1e-10:
             return None
         t = ((ax - ox) * sy - (ay - oy) * sx) / denom
@@ -415,98 +443,72 @@ class RacingGame:
             return t
         return None
 
-    def _cast_ray(self, ox: float, oy: float, angle: float) -> float:
+    def _cast_ray_for_car(self, car_idx: int, ox: float, oy: float, angle: float) -> float:
         """
-        (ox, oy) 에서 angle 방향으로 레이를 쏘아 가장 가까운 차선까지의
-        정규화된 거리 [0, 1] 반환 (닿지 않으면 1.0).
+        car_idx 차량 기준 레이캐스팅.
+        차선 세그먼트 + 다른 차량의 bounding box 4변을 모두 장애물로 감지.
+        반환: 정규화 거리 [0, 1]
         """
-        max_dist = self.car.sensor_range
+        car      = self.cars[car_idx]
+        max_dist = car.sensor_range
         dx, dy   = math.cos(angle), math.sin(angle)
         min_t    = max_dist
 
         for (p1, p2) in self.lane_segments:
-            t = self._ray_segment_intersect(ox, oy, dx, dy,
-                                            p1[0], p1[1], p2[0], p2[1])
+            t = self._ray_segment_intersect(ox, oy, dx, dy, p1[0], p1[1], p2[0], p2[1])
             if t is not None and t < min_t:
                 min_t = t
 
-        return min_t / max_dist  # 정규화
-
-    def _get_sensor_data(self) -> List[float]:
-        """
-        차량 헤딩 기준 8방향 레이캐스트.
-        각 센서: 가장 가까운 차선(left/center/right)까지 정규화 거리 [0, 1].
-
-        반환: 길이 8 리스트
-        """
-        ox, oy = self.car.x, self.car.y
-        heading = self.car.angle
-        return [self._cast_ray(ox, oy, heading + offset) for offset in SENSOR_ANGLES]
-
-    def _get_traffic_light_state(self) -> float:
-        """
-        전방 센서(인덱스 0,1,7) 범위 안에 신호등이 있으면 그 상태를 인코딩해 반환.
-        - 없음    : 0.0
-        - 초록    : 1.0
-        - 노란    : 0.5
-        - 빨강    : -1.0
-
-        여러 신호등이 있으면 가장 가까운 것을 사용.
-        반환: float (1개 값)
-        """
-        ox, oy     = self.car.x, self.car.y
-        heading    = self.car.angle
-        max_dist   = self.car.sensor_range
-
-        # 전방 센서들의 각도 범위
-        fwd_angles = [heading + SENSOR_ANGLES[i] for i in FORWARD_SENSOR_IDX]
-        half_span  = math.pi / 8  # ±22.5° 허용
-
-        nearest_dist = max_dist
-        nearest_tl   = None
-
-        for tl in self.traffic_lights:
-            tx, ty = tl['pos']
-            dx, dy = tx - ox, ty - oy
-            dist   = math.hypot(dx, dy)
-            if dist > max_dist:
+        for j, other in enumerate(self.cars):
+            if j == car_idx:
                 continue
+            corners = other.get_corners()
+            for k in range(4):
+                ax, ay = corners[k]
+                bx, by = corners[(k + 1) % 4]
+                t = self._ray_segment_intersect(ox, oy, dx, dy, ax, ay, bx, by)
+                if t is not None and t < min_t:
+                    min_t = t
 
-            angle_to_tl = math.atan2(dy, dx)
-            for fwd_a in fwd_angles:
-                diff = angle_to_tl - fwd_a
-                # [-π, π] 정규화
-                diff = (diff + math.pi) % (2 * math.pi) - math.pi
-                if abs(diff) <= half_span and dist < nearest_dist:
-                    nearest_dist = dist
-                    nearest_tl   = tl
-                    break
+        return min_t / max_dist
 
-        if nearest_tl is None:
-            return 0.0
-        return TL_ENCODE.get(nearest_tl['state'], 0.0)
+    def _cast_ray(self, ox: float, oy: float, angle: float) -> float:
+        """하위 호환: car 0 기준"""
+        return self._cast_ray_for_car(0, ox, oy, angle)
 
-    def _get_traffic_light_info(self) -> tuple:
+    # ----------------------------------------------------------
+    # 도로 정보
+    # ----------------------------------------------------------
+    def _get_road_info_for_car(self, car_idx: int) -> List[float]:
+        car  = self.cars[car_idx]
+        key  = f"{int(car.x / 10)}_{int(car.y / 10)}"
+        cell = self.direction_grid.get(key)
+        if cell is None:
+            return [0.0, 0.0, 0.0]
+        return [float(cell['is_intersection']), cell['dir'][0], cell['dir'][1]]
+
+    def _get_road_info(self) -> List[float]:
+        return self._get_road_info_for_car(0)
+
+    # ----------------------------------------------------------
+    # 신호등 정보
+    # ----------------------------------------------------------
+    def _get_traffic_light_info_for_car(self, car_idx: int) -> tuple:
         """
-        전방 센서 범위 내 가장 가까운 신호등 정보 반환.
-        신호등의 dir 벡터와 차량 진행 방향이 일치하거나 우회전 중인 경우만 감지.
-
-        반환: (tl_exists: int, tl_state: int, right_turnable: int)
-          tl_exists     : 0 = 없음, 1 = 있음
-          tl_state      : 0 = 빨강, 1 = 노랑, 2 = 초록
-          right_turnable: 0 = 직진/좌회전, 1 = 우회전 중 (빨강이라도 통과 가능)
+        car_idx 차량 기준 신호등 감지.
+        반환: (tl_exists, tl_state, right_turnable)
         """
-        ox, oy   = self.car.x, self.car.y
-        heading  = self.car.angle
-        max_dist = self.car.sensor_range
+        car      = self.cars[car_idx]
+        ox, oy   = car.x, car.y
+        heading  = car.angle
+        max_dist = car.sensor_range
         fwd_angles = [heading + SENSOR_ANGLES[i] for i in FORWARD_SENSOR_IDX]
         half_span  = math.pi / 8
 
-        # 차량 진행 방향 단위벡터 (정지 시 heading 기준)
-        spd = self.car.speed
+        spd = car.speed
         if spd > 1:
-            car_dx = self.car.velocity_x / spd
-            car_dy = self.car.velocity_y / spd
+            car_dx = car.velocity_x / spd
+            car_dy = car.velocity_y / spd
         else:
             car_dx = math.cos(heading)
             car_dy = math.sin(heading)
@@ -525,16 +527,11 @@ class RacingGame:
             tl_dir = tl.get('dir')
             is_right_turn = False
             if tl_dir is not None:
-                # 직진 정렬 (신호등 방향과 차량 진행 방향의 일치도)
-                fwd_align = car_dx * tl_dir[0] + car_dy * tl_dir[1]
-
-                # 우회전 방향: 스크린 좌표에서 시계방향 90° = [-dy, dx]
-                right_dx = -tl_dir[1]
-                right_dy =  tl_dir[0]
+                fwd_align   = car_dx * tl_dir[0] + car_dy * tl_dir[1]
+                right_dx    = -tl_dir[1]
+                right_dy    =  tl_dir[0]
                 right_align = car_dx * right_dx + car_dy * right_dy
                 is_right_turn = right_align > 0.7
-
-                # 직진도 아니고 우회전도 아니면 이 신호등은 무시
                 if fwd_align < 0.3 and not is_right_turn:
                     continue
 
@@ -552,114 +549,68 @@ class RacingGame:
         state_map = {'red': 0, 'yellow': 1, 'green': 2}
         return 1, state_map.get(nearest_tl['state'], 0), int(nearest_is_right)
 
-    def _check_red_light_crossing(self, prev_x: float, prev_y: float) -> tuple:
+    def _get_traffic_light_info(self) -> tuple:
+        return self._get_traffic_light_info_for_car(0)
+
+    # ----------------------------------------------------------
+    # 정지선 위반 감지
+    # ----------------------------------------------------------
+    def _check_red_light_crossing_for_car(self, car_idx: int,
+                                           prev_x: float, prev_y: float) -> tuple:
         """
-        정지선 위반 감지.
-        신호등 방향벡터에 수직인 선(정지선)을 빨간불일 때 차가 넘으면 위반.
-
-        prev_x, prev_y: 이전 프레임의 차량 위치
-
+        신호등 방향벡터에 수직인 정지선을 빨간불 중에 넘으면 위반.
         반환: (crossed: bool, is_right_turn: bool)
-          crossed      : 이 프레임에 정지선을 위반했으면 True
-          is_right_turn: 위반 차량이 우회전 중이었으면 True (빨간불 우회전 합법)
         """
-        car_x, car_y = self.car.x, self.car.y
-        spd     = self.car.speed
-        heading = self.car.angle
+        car      = self.cars[car_idx]
+        car_x, car_y = car.x, car.y
+        spd      = car.speed
+        heading  = car.angle
         if spd > 1:
-            car_dx = self.car.velocity_x / spd
-            car_dy = self.car.velocity_y / spd
+            car_dx = car.velocity_x / spd
+            car_dy = car.velocity_y / spd
         else:
             car_dx = math.cos(heading)
             car_dy = math.sin(heading)
 
-        for i, tl in enumerate(self.traffic_lights):
+        for tl_idx, tl in enumerate(self.traffic_lights):
             tl_dir = tl.get('dir')
             if tl_dir is None:
                 continue
-
-            # 빨간불이 아니면 이전 dot 초기화만 하고 건너뜀
             if tl['state'] != 'red':
-                self.tl_prev_dots.pop(i, None)
+                self.tl_prev_dots.pop((car_idx, tl_idx), None)
                 continue
 
             dir_x, dir_y = tl_dir[0], tl_dir[1]
             tx, ty = tl['pos']
 
-            # 이 신호등이 현재 차량과 관련 있는지 (직진 정렬 or 우회전)
             fwd_align   = car_dx * dir_x + car_dy * dir_y
-            right_dx    = -dir_y
-            right_dy    =  dir_x
-            right_align = car_dx * right_dx + car_dy * right_dy
+            right_align = car_dx * (-dir_y) + car_dy * dir_x
             is_right    = right_align > 0.7
-
             if fwd_align < 0.3 and not is_right:
-                self.tl_prev_dots.pop(i, None)
+                self.tl_prev_dots.pop((car_idx, tl_idx), None)
                 continue
 
-            # 정지선 기준 signed distance: 양수 = 신호등 통과 측, 음수 = 대기 측
             curr_dot = (car_x - tx) * dir_x + (car_y - ty) * dir_y
-            prev_dot = self.tl_prev_dots.get(i)
-            self.tl_prev_dots[i] = curr_dot
+            key      = (car_idx, tl_idx)
+            prev_dot = self.tl_prev_dots.get(key)
+            self.tl_prev_dots[key] = curr_dot
 
-            # 이전 프레임엔 선 뒤(음수), 현재 선 앞(양수 이상) → 위반
             if prev_dot is not None and prev_dot < 0 and curr_dot >= 0:
                 return True, is_right
 
         return False, False
 
-    def _get_road_info(self) -> List[float]:
-        """
-        현재 차량 위치의 direction_grid 셀 조회.
-
-        반환: [is_intersection, dir_x, dir_y]
-        - 도로 위    : [0.0, dx, dy]   (단위 방향벡터)
-        - 교차로     : [1.0, 0.0, 0.0]
-        - 도로 밖    : [0.0, 0.0, 0.0]
-        """
-        key  = f"{int(self.car.x / 10)}_{int(self.car.y / 10)}"
-        cell = self.direction_grid.get(key)
-        if cell is None:
-            return [0.0, 0.0, 0.0]
-        return [float(cell['is_intersection']), cell['dir'][0], cell['dir'][1]]
-
-    def get_state(self) -> np.ndarray:
-        """
-        에이전트 관측 벡터 생성. 항상 고정 크기 (STATE_SIZE = 16).
-
-        구성:
-          [0:8]   센서 거리 × 8          (정규화, 0=바로 닿음, 1=최대 거리)
-          [8]     신호등 상태             (0=없음, 1=초록, 0.5=노랑, -1=빨강)
-          [9]     is_intersection        (0 or 1)
-          [10:12] 도로 방향벡터 (dir_x, dir_y)
-          [12:14] 정규화 속도 (vx, vy)   (÷ max_speed)
-          [14:16] 헤딩 (cos, sin)
-
-        반환: np.ndarray shape=(16,) dtype=float32
-        """
-        sensors   = self._get_sensor_data()          # 8
-        tl_state  = self._get_traffic_light_state()  # 1
-        road_info = self._get_road_info()             # 3
-
-        vx_n = self.car.velocity_x / self.car.max_speed
-        vy_n = self.car.velocity_y / self.car.max_speed
-        cos_h = math.cos(self.car.angle)
-        sin_h = math.sin(self.car.angle)
-
-        state = sensors + [tl_state] + road_info + [vx_n, vy_n, cos_h, sin_h]
-        return np.array(state, dtype=np.float32)
+    def _check_red_light_crossing(self, prev_x: float, prev_y: float) -> tuple:
+        return self._check_red_light_crossing_for_car(0, prev_x, prev_y)
 
     # ----------------------------------------------------------
-    # 기존 게임 로직
+    # 충돌 감지
     # ----------------------------------------------------------
-    def _update_camera(self):
-        target_x = self.car.x - self.width  // 2
-        target_y = self.car.y - self.height // 2
-        self.camera_x += (target_x - self.camera_x) * self.camera_smooth
-        self.camera_y += (target_y - self.camera_y) * self.camera_smooth
+    def _check_collision_for_car(self, car_idx: int) -> bool:
+        car     = self.cars[car_idx]
+        corners = car.get_corners()
 
-    def _check_collision(self) -> bool:
-        corners = self.car.get_corners()
+        # 트랙 경계
         if self.track_mask is not None:
             for x, y in corners:
                 ix, iy = int(x), int(y)
@@ -669,21 +620,106 @@ class RacingGame:
                     return True
                 if self.track_mask[iy, ix] == 0:
                     return True
+
+        # 차량 간 충돌 (근사: 중심 간 거리)
+        for j, other in enumerate(self.cars):
+            if j == car_idx:
+                continue
+            dist     = math.hypot(car.x - other.x, car.y - other.y)
+            min_dist = (car.length + other.length) * 0.35
+            if dist < min_dist:
+                return True
+
         return False
 
-    def _check_goal(self) -> bool:
-        if self.end_pos is None:
-            return False
-        return math.hypot(self.car.x - self.end_pos[0],
-                          self.car.y - self.end_pos[1]) < 30
+    def _check_collision(self) -> bool:
+        return self._check_collision_for_car(0)
 
-    def _check_checkpoints(self) -> int:
-        for i, cp in enumerate(self.checkpoints):
-            if i not in self.checkpoints_reached:
-                if math.hypot(self.car.x - cp[0], self.car.y - cp[1]) < 30:
+    # ----------------------------------------------------------
+    # 체크포인트 / 골
+    # ----------------------------------------------------------
+    def _check_checkpoints_for_car(self, car_idx: int) -> int:
+        """미방문 nav 체크포인트에 도달하면 해당 인덱스 반환. 없으면 -1."""
+        car     = self.cars[car_idx]
+        nav_cps = self.car_checkpoints[car_idx]
+        reached = self.car_cp_reached[car_idx]
+        for i, cp in enumerate(nav_cps):
+            if i not in reached:
+                if math.hypot(car.x - cp[0], car.y - cp[1]) < 30:
                     return i
         return -1
 
+    def _check_goal_for_car(self, car_idx: int) -> bool:
+        car  = self.cars[car_idx]
+        goal = self.car_goals[car_idx]
+        if goal is None:
+            return False
+        return math.hypot(car.x - goal[0], car.y - goal[1]) < 30
+
+    def _check_checkpoints(self) -> int:
+        return self._check_checkpoints_for_car(0)
+
+    def _check_goal(self) -> bool:
+        return self._check_goal_for_car(0)
+
+    # ----------------------------------------------------------
+    # 센서 / 상태 (하위 호환, car 0)
+    # ----------------------------------------------------------
+    def _get_sensor_data(self) -> List[float]:
+        car = self.cars[0]
+        return [self._cast_ray_for_car(0, car.x, car.y, car.angle + offset)
+                for offset in SENSOR_ANGLES]
+
+    def _get_traffic_light_state(self) -> float:
+        ox, oy   = self.car.x, self.car.y
+        heading  = self.car.angle
+        max_dist = self.car.sensor_range
+        fwd_angles = [heading + SENSOR_ANGLES[i] for i in FORWARD_SENSOR_IDX]
+        half_span  = math.pi / 8
+        nearest_dist = max_dist
+        nearest_tl   = None
+        for tl in self.traffic_lights:
+            tx, ty = tl['pos']
+            dx, dy = tx - ox, ty - oy
+            dist   = math.hypot(dx, dy)
+            if dist > max_dist:
+                continue
+            angle_to_tl = math.atan2(dy, dx)
+            for fwd_a in fwd_angles:
+                diff = (angle_to_tl - fwd_a + math.pi) % (2 * math.pi) - math.pi
+                if abs(diff) <= half_span and dist < nearest_dist:
+                    nearest_dist = dist
+                    nearest_tl   = tl
+                    break
+        if nearest_tl is None:
+            return 0.0
+        return TL_ENCODE.get(nearest_tl['state'], 0.0)
+
+    def get_state(self) -> np.ndarray:
+        sensors   = self._get_sensor_data()
+        tl_state  = self._get_traffic_light_state()
+        road_info = self._get_road_info()
+        vx_n = self.car.velocity_x / self.car.max_speed
+        vy_n = self.car.velocity_y / self.car.max_speed
+        cos_h = math.cos(self.car.angle)
+        sin_h = math.sin(self.car.angle)
+        state = sensors + [tl_state] + road_info + [vx_n, vy_n, cos_h, sin_h]
+        return np.array(state, dtype=np.float32)
+
+    # ----------------------------------------------------------
+    # 카메라
+    # ----------------------------------------------------------
+    def _update_camera(self):
+        if not self.cars:
+            return
+        target_x = self.cars[0].x - self.width  // 2
+        target_y = self.cars[0].y - self.height // 2
+        self.camera_x += (target_x - self.camera_x) * self.camera_smooth
+        self.camera_y += (target_y - self.camera_y) * self.camera_smooth
+
+    # ----------------------------------------------------------
+    # 렌더링
+    # ----------------------------------------------------------
     def _draw_traffic_lights(self):
         TL_R = (255,30,30);  TL_Y = (255,220,0);  TL_G = (0,220,0)
         OFF_R = (80,0,0);    OFF_Y = (80,70,0);   OFF_G = (0,70,0)
@@ -696,22 +732,24 @@ class RacingGame:
             pygame.draw.circle(self.screen, TL_G if tl['state']=='green'  else OFF_G, (x, y+25), 9)
 
     def _draw_sensors(self):
-        """센서 레이를 화면에 시각화 (디버그용)"""
-        ox, oy  = self.car.x, self.car.y
-        heading = self.car.angle
-        max_d   = self.car.sensor_range
+        if not self.cars:
+            return
+        car     = self.cars[0]
+        ox, oy  = car.x, car.y
+        heading = car.angle
+        max_d   = car.sensor_range
         for i, offset in enumerate(SENSOR_ANGLES):
             angle  = heading + offset
-            dist_n = self._cast_ray(ox, oy, angle)
+            dist_n = self._cast_ray_for_car(0, ox, oy, angle)
             dist   = dist_n * max_d
             ex = ox + math.cos(angle) * dist
             ey = oy + math.sin(angle) * dist
             color = (255, 80, 80) if dist_n < 0.3 else (80, 200, 255)
             pygame.draw.line(self.screen, color,
-                             (int(ox - self.camera_x), int(oy - self.camera_y)),
-                             (int(ex - self.camera_x), int(ey - self.camera_y)), 1)
+                             (int(ox-self.camera_x), int(oy-self.camera_y)),
+                             (int(ex-self.camera_x), int(ey-self.camera_y)), 1)
             pygame.draw.circle(self.screen, color,
-                               (int(ex - self.camera_x), int(ey - self.camera_y)), 3)
+                               (int(ex-self.camera_x), int(ey-self.camera_y)), 3)
 
     def _draw(self):
         if self.headless:
@@ -719,53 +757,52 @@ class RacingGame:
         self.screen.fill(self.WHITE)
         self.screen.blit(self.track_surface, (-self.camera_x, -self.camera_y))
 
-        if self.start_pos:
-            sx, sy = int(self.start_pos[0]-self.camera_x), int(self.start_pos[1]-self.camera_y)
-            pygame.draw.circle(self.screen, self.GREEN, (sx, sy), 20)
-            self.screen.blit(self.font.render("START", True, self.WHITE),
-                             self.font.render("START", True, self.WHITE).get_rect(center=(sx, sy)))
+        # 시작 위치들
+        for idx, sp in enumerate(self.start_positions):
+            sx, sy = int(sp[0]-self.camera_x), int(sp[1]-self.camera_y)
+            pygame.draw.circle(self.screen, self.GREEN, (sx, sy), 15)
+            lbl = self.font.render(f"S{idx}", True, self.WHITE)
+            self.screen.blit(lbl, lbl.get_rect(center=(sx, sy)))
 
-        if self.end_pos:
-            ex, ey = int(self.end_pos[0]-self.camera_x), int(self.end_pos[1]-self.camera_y)
-            pygame.draw.circle(self.screen, self.RED, (ex, ey), 20)
-            self.screen.blit(self.font.render("GOAL", True, self.WHITE),
-                             self.font.render("GOAL", True, self.WHITE).get_rect(center=(ex, ey)))
-
+        # 체크포인트 (track 전체)
         for i, cp in enumerate(self.checkpoints):
             cx, cy = int(cp[0]-self.camera_x), int(cp[1]-self.camera_y)
-            color  = self.GRAY if i in self.checkpoints_reached else (255,255,0)
-            pygame.draw.circle(self.screen, color, (cx, cy), 15)
-            self.screen.blit(self.font.render(str(i+1), True, self.BLACK),
-                             self.font.render(str(i+1), True, self.BLACK).get_rect(center=(cx, cy)))
+            pygame.draw.circle(self.screen, (255,255,0), (cx, cy), 10)
+            lbl = self.font.render(str(i), True, self.BLACK)
+            self.screen.blit(lbl, lbl.get_rect(center=(cx, cy)))
+
+        # 에이전트별 goal 표시
+        for i, goal in enumerate(self.car_goals):
+            if goal:
+                gx, gy = int(goal[0]-self.camera_x), int(goal[1]-self.camera_y)
+                color  = AGENT_COLORS[i % len(AGENT_COLORS)]
+                pygame.draw.circle(self.screen, color, (gx, gy), 14, 3)
 
         self._draw_traffic_lights()
         self._draw_sensors()
-        self.car.draw(self.screen, (self.camera_x, self.camera_y))
 
-        # HUD
-        speed_kmh = self.car.speed * 0.36
-        elapsed   = ((self.end_time or pygame.time.get_ticks()) - self.start_time) / 1000
-        state     = self.get_state()
-        hud = [
-            f"Speed: {speed_kmh:.1f} km/h",
-            f"Time: {elapsed:.1f}s",
-            f"TL: {state[8]:+.1f}  Intersection: {int(state[9])}",
-            f"RoadDir: ({state[10]:.2f}, {state[11]:.2f})",
-        ]
-        if self.car.is_drifting: hud.append("DRIFT!")
-        for j, t in enumerate(hud):
-            self.screen.blit(self.font.render(t, True, self.BLACK), (10, 10+j*28))
+        # 모든 차량 그리기 (에이전트 번호 + 색상)
+        for i, car in enumerate(self.cars):
+            color = AGENT_COLORS[i % len(AGENT_COLORS)]
+            car.draw(self.screen, (self.camera_x, self.camera_y), color=color)
+            # 번호 표시
+            lx = int(car.x - self.camera_x)
+            ly = int(car.y - self.camera_y - car.length)
+            lbl = self.font.render(str(i+1), True, color)
+            self.screen.blit(lbl, lbl.get_rect(center=(lx, ly)))
 
-        if self.collision:
-            self.screen.blit(
-                self.big_font.render("CRASHED! R to Reset", True, self.RED),
-                self.big_font.render("CRASHED! R to Reset", True, self.RED)
-                    .get_rect(center=(self.width//2, self.height//2)))
-        if self.goal_reached:
-            self.screen.blit(
-                self.big_font.render(f"GOAL! {elapsed:.2f}s", True, self.GREEN),
-                self.big_font.render(f"GOAL! {elapsed:.2f}s", True, self.GREEN)
-                    .get_rect(center=(self.width//2, self.height//2)))
+        # HUD (car 0 기준)
+        if self.cars:
+            car = self.cars[0]
+            speed_kmh = car.speed * 0.36
+            elapsed   = ((self.car_end_times[0] or pygame.time.get_ticks()) - self.start_time) / 1000
+            hud = [
+                f"Agents: {self.n_agents}",
+                f"Car0 Speed: {speed_kmh:.1f} km/h",
+                f"Time: {elapsed:.1f}s",
+            ]
+            for j, t in enumerate(hud):
+                self.screen.blit(self.font.render(t, True, self.BLACK), (10, 10+j*28))
 
         pygame.display.flip()
 
@@ -773,96 +810,154 @@ class RacingGame:
     # RL 인터페이스
     # ----------------------------------------------------------
     def reset(self):
-        sp = self.start_pos or [self.width//2, self.height//2]
-        self.car = Car(sp[0], sp[1], angle=0, car_info=self.car_json)
+        """모든 차량 및 에피소드 상태 초기화"""
+        for i, cj in enumerate(self.car_jsons):
+            sp_idx = cj.get('start_point', i % max(len(self.start_positions), 1))
+            if self.start_positions:
+                sp = self.start_positions[sp_idx % len(self.start_positions)]
+            else:
+                sp = [self.width // 2, self.height // 2]
+            self.cars[i]              = Car(sp[0], sp[1], angle=0, car_info=cj)
+            self.car_collisions[i]    = False
+            self.car_goal_reached[i]  = False
+            self.car_cp_reached[i]    = []
+            self.car_end_times[i]     = None
 
-        self.collision = self.goal_reached = False
-        self.total_distance = 0
-        self.start_time = pygame.time.get_ticks()
-        self.end_time = None
-        self.camera_x = self.camera_y = 0
+        self.car       = self.cars[0] if self.cars else None
+        self.start_pos = self.start_positions[0] if self.start_positions else None
+
+        self.collision          = False
+        self.goal_reached       = False
+        self.total_distance     = 0
+        self.start_time         = pygame.time.get_ticks()
+        self.end_time           = None
+        self.current_time       = None
+        self.camera_x           = self.camera_y = 0
         self.checkpoints_reached = []
-        self.tl_prev_dots = {}
-        # 신호등 시퀀스는 리셋하지 않음 — 에피소드 간 연속 작동으로 다양한 신호 상황 노출
+        self.tl_prev_dots        = {}
+        # 신호등 시퀀스 유지
 
-    def step(self, controls):
+    def step(self, controls_list) -> list:
         """
-        강화학습 스텝.
-        반환: (state, reward, done, info)
+        다중 에이전트 스텝.
+
+        controls_list: list of control dicts, 길이 = n_agents
+                       (단일 에이전트 호환: dict 1개를 list로 감싸도 됨)
+
+        반환: list of result dicts (에이전트 수만큼)
+          각 dict:
+            collision            : bool
+            goal_reached         : bool
+            cp_reached           : bool  — 이 프레임에 nav cp 도달
+            cp_idx               : int   — 도달한 cp 인덱스 (-1이면 없음)
+            red_light_crossed    : bool
+            red_light_right_turn : bool
+            done                 : bool
         """
-        dt = 1 / self.fps
+        # 단일 에이전트 호환: dict가 직접 넘어오면 리스트로 감쌈
+        if isinstance(controls_list, dict):
+            controls_list = [controls_list]
+
+        dt    = 1 / self.fps
         dt_ms = dt * 1000
         self.current_time = pygame.time.get_ticks() - self.start_time
 
-        prev_x, prev_y = self.car.x, self.car.y
-        self.car.update(dt, controls)
-        self.total_distance += math.hypot(self.car.x-prev_x, self.car.y-prev_y)
+        prev_positions = [(car.x, car.y) for car in self.cars]
+
+        # 모든 차 이동
+        for i, car in enumerate(self.cars):
+            if not self.car_collisions[i] and not self.car_goal_reached[i]:
+                ctrl = controls_list[i] if i < len(controls_list) else {}
+                car.update(dt, ctrl)
 
         self._update_camera()
         self._update_traffic_lights(dt_ms)
 
-        self.collision = self._check_collision()
+        results = []
+        for i, car in enumerate(self.cars):
+            # 이미 종료된 에이전트
+            if self.car_collisions[i] or self.car_goal_reached[i]:
+                results.append({
+                    'collision':            self.car_collisions[i],
+                    'goal_reached':         self.car_goal_reached[i],
+                    'cp_reached':           False,
+                    'cp_idx':               -1,
+                    'red_light_crossed':    False,
+                    'red_light_right_turn': False,
+                    'done':                 True,
+                })
+                continue
 
-        cp_idx = self._check_checkpoints()
-        if cp_idx != -1:
-            self.checkpoints_reached.append(cp_idx)
+            prev_x, prev_y = prev_positions[i]
 
-        self.goal_reached = self._check_goal()
+            collision = self._check_collision_for_car(i)
+            self.car_collisions[i] = collision
 
-        # 정지선 위반 감지 (신호등 업데이트 후에 체크)
-        red_light_crossed, rl_is_right = self._check_red_light_crossing(prev_x, prev_y)
+            cp_idx = self._check_checkpoints_for_car(i)
+            if cp_idx != -1:
+                self.car_cp_reached[i].append(cp_idx)
 
-        if (self.collision or self.goal_reached) and self.end_time is None:
-            self.end_time = pygame.time.get_ticks()
+            goal = self._check_goal_for_car(i)
+            self.car_goal_reached[i] = goal
 
-        # 리워드
-        reward = self.car.speed * 0.01
-        if self.collision:   reward -= 100
-        if self.goal_reached: reward += 1000
+            red_crossed, rl_right = self._check_red_light_crossing_for_car(i, prev_x, prev_y)
 
-        done  = self.collision or self.goal_reached
-        info  = {
-            'speed':               self.car.speed,
-            'distance':            self.total_distance,
-            'collision':           self.collision,
-            'goal_reached':        self.goal_reached,
-            'time':                self.current_time / 1000,
-            'red_light_crossed':   red_light_crossed,
-            'red_light_right_turn': rl_is_right,
-        }
-        return reward, done, info
+            if (collision or goal) and self.car_end_times[i] is None:
+                self.car_end_times[i] = pygame.time.get_ticks()
 
+            results.append({
+                'collision':            collision,
+                'goal_reached':         goal,
+                'cp_reached':           cp_idx != -1,
+                'cp_idx':               cp_idx,
+                'red_light_crossed':    red_crossed,
+                'red_light_right_turn': rl_right,
+                'done':                 collision or goal,
+            })
+
+        # 하위 호환 (car 0)
+        self.collision    = self.car_collisions[0]
+        self.goal_reached = self.car_goal_reached[0]
+        if self.cars:
+            self.checkpoints_reached = self.car_cp_reached[0]
+
+        return results
+
+    # ----------------------------------------------------------
+    # 수동 플레이 (car 0)
+    # ----------------------------------------------------------
     def run(self):
-        """수동 플레이"""
         if self.headless:
             print("headless 모드에서는 수동 플레이 불가")
             return
 
         print("=" * 50)
         print("Controls: Arrow Keys / Space(Drift) / R(Reset)")
-        print(f"State size: {STATE_SIZE}")
+        print(f"Agents: {self.n_agents}")
         print("=" * 50)
 
         running = True
         while running:
-            controls = dict(forward=False, backward=False,
-                            left=False,    right=False, brake=False)
+            ctrl = dict(forward=False, backward=False, left=False, right=False, brake=False)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
 
             keys = pygame.key.get_pressed()
-            controls['forward']  = bool(keys[pygame.K_UP])
-            controls['backward'] = bool(keys[pygame.K_DOWN])
-            controls['left']     = bool(keys[pygame.K_LEFT])
-            controls['right']    = bool(keys[pygame.K_RIGHT])
-            controls['brake']    = bool(keys[pygame.K_SPACE])
-            if keys[pygame.K_r]: self.reset()
+            ctrl['forward']  = bool(keys[pygame.K_UP])
+            ctrl['backward'] = bool(keys[pygame.K_DOWN])
+            ctrl['left']     = bool(keys[pygame.K_LEFT])
+            ctrl['right']    = bool(keys[pygame.K_RIGHT])
+            ctrl['brake']    = bool(keys[pygame.K_SPACE])
+            if keys[pygame.K_r]:
+                self.reset()
 
-            if not self.collision and not self.goal_reached:
-                state, reward, done, info = self.step(controls)
-                if done:
-                    print("GOAL!" if self.goal_reached else "CRASHED!")
+            if not self.car_collisions[0] and not self.car_goal_reached[0]:
+                # car 0만 수동 조종, 나머지는 정지
+                controls_list = [ctrl] + [{}] * (self.n_agents - 1)
+                results = self.step(controls_list)
+                if results[0]['done']:
+                    print("GOAL!" if results[0]['goal_reached'] else "CRASHED!")
 
             self._draw()
             self.clock.tick(self.fps)
@@ -875,6 +970,7 @@ if __name__ == "__main__":
     import os
     track_file = "track_data.json" if os.path.exists("track_data.json") else "track.json"
     if not os.path.exists(track_file):
-        print("트랙 파일이 없습니다. track_editor2 copy.py 로 먼저 트랙을 만들어주세요.")
+        print("트랙 파일이 없습니다. map_editor.py 로 먼저 트랙을 만들어주세요.")
     else:
-        RacingGame(track_file).run()
+        RacingGame(track_file,
+                   vehicle_configs=["./vehicles/vehicle_1.json"]).run()

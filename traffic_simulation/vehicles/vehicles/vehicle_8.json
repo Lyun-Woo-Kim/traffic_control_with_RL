@@ -1,0 +1,20 @@
+{
+  "_type": "승합차 (Minivan) — e.g. Staria / Carnival",
+  "_scale_note": "1 pixel = 약 5cm. 트랙 폭 100px = 5m",
+
+  "max_speed": 320,
+  "acceleration_force": 110,
+  "brake_force": 240,
+  "friction": 0.96,
+  "lateral_friction": 0.87,
+  "drift_friction": 0.40,
+  "brake_factor": 0.93,
+  "turn_speed": 2.0,
+  "sensor_range": 240,
+  "width": 24,
+  "length": 54,
+  "speed_friction_reduction": 0.03,
+  "drift_extra_friction_reduction": 0.04,
+  "brake_speed_penalty": 0.12,
+  "start_point": 0
+}

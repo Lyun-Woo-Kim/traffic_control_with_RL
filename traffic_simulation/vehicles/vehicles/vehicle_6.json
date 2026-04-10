@@ -1,0 +1,20 @@
+{
+  "_type": "소형 SUV (Compact SUV) — e.g. Tucson / Sportage",
+  "_scale_note": "1 pixel = 약 5cm. 트랙 폭 100px = 5m",
+
+  "max_speed": 360,
+  "acceleration_force": 130,
+  "brake_force": 270,
+  "friction": 0.96,
+  "lateral_friction": 0.89,
+  "drift_friction": 0.35,
+  "brake_factor": 0.92,
+  "turn_speed": 2.3,
+  "sensor_range": 240,
+  "width": 22,
+  "length": 44,
+  "speed_friction_reduction": 0.03,
+  "drift_extra_friction_reduction": 0.05,
+  "brake_speed_penalty": 0.10,
+  "start_point": 0
+}
