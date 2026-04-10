@@ -1,0 +1,4109 @@
+{
+  "segments": [
+    {
+      "type": "line",
+      "points": [
+        [
+          31,
+          60
+        ],
+        [
+          1146,
+          60
+        ]
+      ],
+      "width": 120
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1089,
+          2
+        ],
+        [
+          1092,
+          671
+        ]
+      ],
+      "width": 120
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1152,
+          613
+        ],
+        [
+          39,
+          609
+        ]
+      ],
+      "width": 120
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          90,
+          668
+        ],
+        [
+          90,
+          2
+        ]
+      ],
+      "width": 120
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          27,
+          326
+        ],
+        [
+          1153,
+          327
+        ]
+      ],
+      "width": 120
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          583,
+          1
+        ],
+        [
+          587,
+          671
+        ]
+      ],
+      "width": 120
+    }
+  ],
+  "direction_grid": {
+    "4_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "5_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "6_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "7_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "8_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "9_6": {
+      "is_intersection": 1,
+      "dir": [
+        0.0,
+        0.0
+      ]
+    },
+    "10_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "11_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "12_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "13_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "14_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "15_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "16_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "17_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "18_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "19_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "20_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "21_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "22_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "23_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "24_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "25_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "26_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "27_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "28_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "29_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "30_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "31_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "32_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "33_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "34_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "35_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "36_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "37_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "38_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "39_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "40_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "41_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "42_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "43_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "44_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "45_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "46_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "47_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "48_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "49_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "50_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "51_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "52_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "53_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "54_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "55_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "56_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "57_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "58_6": {
+      "is_intersection": 1,
+      "dir": [
+        0.0,
+        0.0
+      ]
+    },
+    "59_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "60_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "61_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "62_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "63_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "64_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "65_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "66_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "67_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "68_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "69_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "70_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "71_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "72_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "73_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "74_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "75_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "76_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "77_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "78_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "79_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "80_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "81_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "82_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "83_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "84_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "85_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "86_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "87_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "88_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "89_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "90_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "91_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "92_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "93_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "94_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "95_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "96_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "97_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "98_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "99_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "100_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "101_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "102_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "103_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "104_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "105_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "106_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "107_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "108_6": {
+      "is_intersection": 1,
+      "dir": [
+        0.0,
+        0.0
+      ]
+    },
+    "109_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "110_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "111_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "112_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "113_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "114_6": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0
+      ]
+    },
+    "108_1": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_2": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_3": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_4": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_5": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_7": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_8": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_9": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_10": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_11": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_12": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_13": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_14": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_15": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_16": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_17": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_18": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_19": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_20": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_21": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "108_22": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_23": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_24": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_25": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_26": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_27": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_28": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_29": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_30": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_31": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_32": {
+      "is_intersection": 1,
+      "dir": [
+        0.0,
+        0.0
+      ]
+    },
+    "109_33": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_34": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_35": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_36": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_37": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_38": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_39": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_40": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_41": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_42": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_43": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_44": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_45": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_46": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_47": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_48": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_49": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_50": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_51": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_52": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_53": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_54": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_55": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_56": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_57": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_58": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_59": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_60": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_61": {
+      "is_intersection": 1,
+      "dir": [
+        0.0,
+        0.0
+      ]
+    },
+    "109_62": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_63": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_64": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_65": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "109_66": {
+      "is_intersection": 0,
+      "dir": [
+        0.0045,
+        1.0
+      ]
+    },
+    "114_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "113_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "112_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "111_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "110_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "108_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "107_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "106_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "105_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "104_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "103_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "102_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "101_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "100_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "99_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "98_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "97_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "96_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "95_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "94_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "93_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "92_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "91_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "90_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "89_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "88_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "87_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "86_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "85_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "84_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "83_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "82_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "81_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "80_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "79_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "78_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "77_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "76_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "75_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "74_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "73_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "72_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "71_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "70_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "69_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "68_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "67_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "66_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "65_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "64_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "63_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "62_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "61_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "60_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "59_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "58_61": {
+      "is_intersection": 1,
+      "dir": [
+        0.0,
+        0.0
+      ]
+    },
+    "57_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "56_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "55_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "54_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "53_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "52_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "51_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "50_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "49_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "48_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "47_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "46_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "45_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "44_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "43_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "42_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "41_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "40_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "39_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "38_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "37_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "36_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "35_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "34_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "33_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "32_61": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "31_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "30_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "29_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "28_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "27_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "26_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "25_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "24_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "23_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "22_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "21_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "20_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "19_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "18_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "17_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "16_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "15_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "14_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "13_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "12_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "11_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "10_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "9_60": {
+      "is_intersection": 1,
+      "dir": [
+        0.0,
+        0.0
+      ]
+    },
+    "8_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "7_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "6_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "5_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "4_60": {
+      "is_intersection": 0,
+      "dir": [
+        -1.0,
+        -0.0036
+      ]
+    },
+    "9_65": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_64": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_63": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_62": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_61": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_59": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_58": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_57": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_56": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_55": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_54": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_53": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_52": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_51": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_50": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_49": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_48": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_47": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_46": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_45": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_44": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_43": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_42": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_41": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_40": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_39": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_38": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_37": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_36": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_35": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_34": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_33": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_32": {
+      "is_intersection": 1,
+      "dir": [
+        0.0,
+        0.0
+      ]
+    },
+    "9_31": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_30": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_29": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_28": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_27": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_26": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_25": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_24": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_23": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_22": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_21": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_20": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_19": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_18": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_17": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_16": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_15": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_14": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_13": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_12": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_11": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_10": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_9": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_8": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_7": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_5": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_4": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_3": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_2": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_1": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "9_0": {
+      "is_intersection": 0,
+      "dir": [
+        0.0,
+        -1.0
+      ]
+    },
+    "3_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "4_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "5_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "6_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "7_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "8_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "10_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "11_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "12_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "13_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "14_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "15_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "16_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "17_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "18_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "19_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "20_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "21_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "22_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "23_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "24_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "25_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "26_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "27_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "28_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "29_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "30_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "31_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "32_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "33_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "34_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "35_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "36_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "37_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "38_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "39_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "40_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "41_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "42_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "43_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "44_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "45_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "46_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "47_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "48_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "49_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "50_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "51_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "52_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "53_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "54_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "55_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "56_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "57_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "58_32": {
+      "is_intersection": 1,
+      "dir": [
+        0.0,
+        0.0
+      ]
+    },
+    "59_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "60_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "61_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "62_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "63_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "64_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "65_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "66_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "67_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "68_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "69_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "70_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "71_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "72_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "73_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "74_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "75_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "76_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "77_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "78_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "79_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "80_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "81_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "82_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "83_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "84_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "85_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "86_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "87_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "88_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "89_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "90_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "91_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "92_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "93_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "94_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "95_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "96_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "97_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "98_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "99_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "100_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "101_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "102_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "103_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "104_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "105_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "106_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "107_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "108_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "110_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "111_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "112_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "113_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "114_32": {
+      "is_intersection": 0,
+      "dir": [
+        1.0,
+        0.0009
+      ]
+    },
+    "58_1": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_2": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_3": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_4": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_5": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_7": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_8": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_9": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_10": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_11": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_12": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_13": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_14": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_15": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_16": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_17": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_18": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_19": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_20": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_21": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_22": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_23": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_24": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_25": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_26": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_27": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_28": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_29": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_30": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_31": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_33": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_34": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_35": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_36": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_37": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_38": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_39": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_40": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_41": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_42": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_43": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_44": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_45": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_46": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_47": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_48": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_49": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_50": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_51": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_52": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_53": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_54": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_55": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_56": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_57": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_58": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_59": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_60": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_62": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_63": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_64": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_65": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_66": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    },
+    "58_67": {
+      "is_intersection": 0,
+      "dir": [
+        0.006,
+        1.0
+      ]
+    }
+  },
+  "lane_data": [
+    {
+      "seg_id": 0,
+      "left_lane": [
+        [
+          31.0,
+          120.0
+        ],
+        [
+          1146.0,
+          120.0
+        ]
+      ],
+      "center_lane": [
+        [
+          31,
+          60
+        ],
+        [
+          1146,
+          60
+        ]
+      ],
+      "right_lane": [
+        [
+          31.0,
+          0.0
+        ],
+        [
+          1146.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "seg_id": 1,
+      "left_lane": [
+        [
+          1029.0,
+          2.27
+        ],
+        [
+          1032.0,
+          671.27
+        ]
+      ],
+      "center_lane": [
+        [
+          1089,
+          2
+        ],
+        [
+          1092,
+          671
+        ]
+      ],
+      "right_lane": [
+        [
+          1149.0,
+          1.73
+        ],
+        [
+          1152.0,
+          670.73
+        ]
+      ]
+    },
+    {
+      "seg_id": 2,
+      "left_lane": [
+        [
+          1152.22,
+          553.0
+        ],
+        [
+          39.22,
+          549.0
+        ]
+      ],
+      "center_lane": [
+        [
+          1152,
+          613
+        ],
+        [
+          39,
+          609
+        ]
+      ],
+      "right_lane": [
+        [
+          1151.78,
+          673.0
+        ],
+        [
+          38.78,
+          669.0
+        ]
+      ]
+    },
+    {
+      "seg_id": 3,
+      "left_lane": [
+        [
+          150.0,
+          668.0
+        ],
+        [
+          150.0,
+          2.0
+        ]
+      ],
+      "center_lane": [
+        [
+          90,
+          668
+        ],
+        [
+          90,
+          2
+        ]
+      ],
+      "right_lane": [
+        [
+          30.0,
+          668.0
+        ],
+        [
+          30.0,
+          2.0
+        ]
+      ]
+    },
+    {
+      "seg_id": 4,
+      "left_lane": [
+        [
+          26.95,
+          386.0
+        ],
+        [
+          1152.95,
+          387.0
+        ]
+      ],
+      "center_lane": [
+        [
+          27,
+          326
+        ],
+        [
+          1153,
+          327
+        ]
+      ],
+      "right_lane": [
+        [
+          27.05,
+          266.0
+        ],
+        [
+          1153.05,
+          267.0
+        ]
+      ]
+    },
+    {
+      "seg_id": 5,
+      "left_lane": [
+        [
+          523.0,
+          1.36
+        ],
+        [
+          527.0,
+          671.36
+        ]
+      ],
+      "center_lane": [
+        [
+          583,
+          1
+        ],
+        [
+          587,
+          671
+        ]
+      ],
+      "right_lane": [
+        [
+          643.0,
+          0.64
+        ],
+        [
+          647.0,
+          670.64
+        ]
+      ]
+    }
+  ],
+  "traffic_lights": [
+    {
+      "pos": [
+        531,
+        325
+      ],
+      "dir": [
+        -1.0,
+        0.0
+      ],
+      "state": "red",
+      "green_duration": 7185,
+      "yellow_duration": 3000,
+      "red_duration": 7000
+    },
+    {
+      "pos": [
+        644,
+        326
+      ],
+      "dir": [
+        0.9997,
+        0.0244
+      ],
+      "state": "green",
+      "green_duration": 9387,
+      "yellow_duration": 3000,
+      "red_duration": 7000
+    },
+    {
+      "pos": [
+        585,
+        263
+      ],
+      "dir": [
+        0.0,
+        -1.0
+      ],
+      "state": "green",
+      "green_duration": 7359,
+      "yellow_duration": 3000,
+      "red_duration": 7000
+    },
+    {
+      "pos": [
+        585,
+        385
+      ],
+      "dir": [
+        0.0154,
+        0.9999
+      ],
+      "state": "red",
+      "green_duration": 8783,
+      "yellow_duration": 3000,
+      "red_duration": 7000
+    }
+  ],
+  "checkpoints": [
+    [
+      236,
+      91
+    ],
+    [
+      437,
+      89
+    ],
+    [
+      555,
+      191
+    ],
+    [
+      554,
+      463
+    ],
+    [
+      422,
+      583
+    ],
+    [
+      915,
+      31
+    ],
+    [
+      739,
+      31
+    ],
+    [
+      741,
+      357
+    ],
+    [
+      931,
+      359
+    ],
+    [
+      1123,
+      514
+    ],
+    [
+      1127,
+      394
+    ],
+    [
+      929,
+      290
+    ],
+    [
+      741,
+      292
+    ],
+    [
+      620,
+      195
+    ],
+    [
+      128,
+      522
+    ],
+    [
+      124,
+      407
+    ],
+    [
+      268,
+      354
+    ],
+    [
+      407,
+      355
+    ]
+  ],
+  "start_positions": [
+    [
+      61,
+      32
+    ],
+    [
+      1119,
+      33
+    ],
+    [
+      1124,
+      633
+    ],
+    [
+      67,
+      640
+    ]
+  ],
+  "end_pos": null
+}
