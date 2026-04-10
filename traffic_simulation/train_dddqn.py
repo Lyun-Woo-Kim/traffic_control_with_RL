@@ -22,7 +22,7 @@ from traffic_env import RacingGame
 # ============================================================
 # 상수
 # ============================================================
-INPUT_SIZE = 29   # 8(센서) + 8(차량상태) + 8(차량스펙) + 5(도로/신호)
+INPUT_SIZE = 30   # 8(센서) + 8(차량상태) + 8(차량스펙) + 6(도로/신호/우회전)
 
 
 # ============================================================
@@ -91,14 +91,15 @@ def get_data(game, standard_cp=None, dis_gap=None):
     dir_x           = road_info[1]
     dir_y           = road_info[2]
 
-    # 신호등 존재 여부 + 상태 (빨강:0, 노랑:1, 초록:2)
-    tl_exists, tl_state = game._get_traffic_light_info()
+    # 신호등: 존재 여부 + 상태 + 우회전 가능 여부
+    # right_turnable=1 이면 빨간불이라도 우회전 통과 가능
+    tl_exists, tl_state, right_turnable = game._get_traffic_light_info()
 
     return (sensors
             + [cos_angle, sin_angle, speed, vel_x, vel_y,
                normalized_dist, normalized_angle, is_drifting]
             + car_features
-            + [dir_x, dir_y, is_intersection, tl_exists, tl_state])
+            + [dir_x, dir_y, is_intersection, tl_exists, tl_state, right_turnable])
 
 
 # ============================================================
@@ -162,16 +163,23 @@ def get_frame_reward(state, is_collision, is_goal,
     # ── 신호 위반 패널티 ──────────────────────────────────────────
     # _get_traffic_light_info() 에서 차량 진행 방향과 일치하는 신호등만 반환하므로
     # 이 패널티는 해당 차량이 실제로 따라야 하는 신호등에 대해서만 적용됨
-    tl_exists = state[27]
-    tl_state  = state[28]
+    tl_exists     = state[27]
+    tl_state      = state[28]
+    right_turnable = state[29]   # 1 = 빨간불 우회전 허용
     if tl_exists == 1:
         if tl_state == 0:   # 빨간불
-            if speed_n > 0.05:
-                # 속도에 비례한 패널티 — 빠를수록 더 큰 위반
-                reward -= 5.0 * speed_n
+            if right_turnable == 1:
+                # 빨간불이라도 우회전 허용 → 과속만 약하게 패널티
+                if speed_n > 0.3:
+                    reward -= 0.5 * (speed_n - 0.3)
+                # 저속 우회전은 패널티 없음 (합법적 통과)
             else:
-                # 빨간불에 정지 → 준수 보상
-                reward += 0.5
+                if speed_n > 0.05:
+                    # 속도에 비례한 패널티 — 빠를수록 더 큰 위반
+                    reward -= 5.0 * speed_n
+                else:
+                    # 빨간불에 정지 → 준수 보상
+                    reward += 0.5
         elif tl_state == 1:  # 노란불 — 감속해야 함
             if speed_n > 0.2:
                 reward -= 2.0 * (speed_n - 0.2)
@@ -721,6 +729,6 @@ if __name__ == "__main__":
         max_size      = args.max_size,
         lr            = args.lr,
         batch_size    = args.batch_size,
-        car_json_path = "./racing_car.json",
+        car_json_path = "./vehicle_config.json",
         track_file    = "./track_data.json",
     )

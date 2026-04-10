@@ -488,11 +488,12 @@ class RacingGame:
     def _get_traffic_light_info(self) -> tuple:
         """
         전방 센서 범위 내 가장 가까운 신호등 정보 반환.
-        신호등의 dir 벡터와 차량 진행 방향이 일치하는 신호등만 감지.
+        신호등의 dir 벡터와 차량 진행 방향이 일치하거나 우회전 중인 경우만 감지.
 
-        반환: (tl_exists: int, tl_state: int)
-          tl_exists : 0 = 없음, 1 = 있음
-          tl_state  : 0 = 빨강, 1 = 노랑, 2 = 초록  (없으면 0)
+        반환: (tl_exists: int, tl_state: int, right_turnable: int)
+          tl_exists     : 0 = 없음, 1 = 있음
+          tl_state      : 0 = 빨강, 1 = 노랑, 2 = 초록
+          right_turnable: 0 = 직진/좌회전, 1 = 우회전 중 (빨강이라도 통과 가능)
         """
         ox, oy   = self.car.x, self.car.y
         heading  = self.car.angle
@@ -509,8 +510,9 @@ class RacingGame:
             car_dx = math.cos(heading)
             car_dy = math.sin(heading)
 
-        nearest_dist = max_dist
-        nearest_tl   = None
+        nearest_dist     = max_dist
+        nearest_tl       = None
+        nearest_is_right = False
 
         for tl in self.traffic_lights:
             tx, ty = tl['pos']
@@ -519,26 +521,35 @@ class RacingGame:
             if dist > max_dist:
                 continue
 
-            # 신호등 dir 가 있으면 차량 진행 방향과 일치 여부 확인
-            # dir = 이 신호등이 제어하는 교통 흐름 방향
             tl_dir = tl.get('dir')
+            is_right_turn = False
             if tl_dir is not None:
-                alignment = car_dx * tl_dir[0] + car_dy * tl_dir[1]
-                if alignment < 0.3:   # 방향이 맞지 않으면 무시
+                # 직진 정렬 (신호등 방향과 차량 진행 방향의 일치도)
+                fwd_align = car_dx * tl_dir[0] + car_dy * tl_dir[1]
+
+                # 우회전 방향: 스크린 좌표에서 시계방향 90° = [-dy, dx]
+                right_dx = -tl_dir[1]
+                right_dy =  tl_dir[0]
+                right_align = car_dx * right_dx + car_dy * right_dy
+                is_right_turn = right_align > 0.7
+
+                # 직진도 아니고 우회전도 아니면 이 신호등은 무시
+                if fwd_align < 0.3 and not is_right_turn:
                     continue
 
             angle_to_tl = math.atan2(dy, dx)
             for fwd_a in fwd_angles:
                 diff = (angle_to_tl - fwd_a + math.pi) % (2 * math.pi) - math.pi
                 if abs(diff) <= half_span and dist < nearest_dist:
-                    nearest_dist = dist
-                    nearest_tl   = tl
+                    nearest_dist     = dist
+                    nearest_tl       = tl
+                    nearest_is_right = is_right_turn
                     break
 
         if nearest_tl is None:
-            return 0, 0
+            return 0, 0, 0
         state_map = {'red': 0, 'yellow': 1, 'green': 2}
-        return 1, state_map.get(nearest_tl['state'], 0)
+        return 1, state_map.get(nearest_tl['state'], 0), int(nearest_is_right)
 
     def _get_road_info(self) -> List[float]:
         """
