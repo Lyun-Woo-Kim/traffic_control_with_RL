@@ -248,6 +248,7 @@ class RacingGame:
         self.end_time          = None
         self.current_time      = None
         self.checkpoints_reached = []
+        self.tl_prev_dots      = {}   # {tl_index: prev_dot}  정지선 위반 감지용
 
         if not headless:
             try:
@@ -551,6 +552,62 @@ class RacingGame:
         state_map = {'red': 0, 'yellow': 1, 'green': 2}
         return 1, state_map.get(nearest_tl['state'], 0), int(nearest_is_right)
 
+    def _check_red_light_crossing(self, prev_x: float, prev_y: float) -> tuple:
+        """
+        정지선 위반 감지.
+        신호등 방향벡터에 수직인 선(정지선)을 빨간불일 때 차가 넘으면 위반.
+
+        prev_x, prev_y: 이전 프레임의 차량 위치
+
+        반환: (crossed: bool, is_right_turn: bool)
+          crossed      : 이 프레임에 정지선을 위반했으면 True
+          is_right_turn: 위반 차량이 우회전 중이었으면 True (빨간불 우회전 합법)
+        """
+        car_x, car_y = self.car.x, self.car.y
+        spd     = self.car.speed
+        heading = self.car.angle
+        if spd > 1:
+            car_dx = self.car.velocity_x / spd
+            car_dy = self.car.velocity_y / spd
+        else:
+            car_dx = math.cos(heading)
+            car_dy = math.sin(heading)
+
+        for i, tl in enumerate(self.traffic_lights):
+            tl_dir = tl.get('dir')
+            if tl_dir is None:
+                continue
+
+            # 빨간불이 아니면 이전 dot 초기화만 하고 건너뜀
+            if tl['state'] != 'red':
+                self.tl_prev_dots.pop(i, None)
+                continue
+
+            dir_x, dir_y = tl_dir[0], tl_dir[1]
+            tx, ty = tl['pos']
+
+            # 이 신호등이 현재 차량과 관련 있는지 (직진 정렬 or 우회전)
+            fwd_align   = car_dx * dir_x + car_dy * dir_y
+            right_dx    = -dir_y
+            right_dy    =  dir_x
+            right_align = car_dx * right_dx + car_dy * right_dy
+            is_right    = right_align > 0.7
+
+            if fwd_align < 0.3 and not is_right:
+                self.tl_prev_dots.pop(i, None)
+                continue
+
+            # 정지선 기준 signed distance: 양수 = 신호등 통과 측, 음수 = 대기 측
+            curr_dot = (car_x - tx) * dir_x + (car_y - ty) * dir_y
+            prev_dot = self.tl_prev_dots.get(i)
+            self.tl_prev_dots[i] = curr_dot
+
+            # 이전 프레임엔 선 뒤(음수), 현재 선 앞(양수 이상) → 위반
+            if prev_dot is not None and prev_dot < 0 and curr_dot >= 0:
+                return True, is_right
+
+        return False, False
+
     def _get_road_info(self) -> List[float]:
         """
         현재 차량 위치의 direction_grid 셀 조회.
@@ -725,6 +782,7 @@ class RacingGame:
         self.end_time = None
         self.camera_x = self.camera_y = 0
         self.checkpoints_reached = []
+        self.tl_prev_dots = {}
         # 신호등 시퀀스는 리셋하지 않음 — 에피소드 간 연속 작동으로 다양한 신호 상황 노출
 
     def step(self, controls):
@@ -751,6 +809,9 @@ class RacingGame:
 
         self.goal_reached = self._check_goal()
 
+        # 정지선 위반 감지 (신호등 업데이트 후에 체크)
+        red_light_crossed, rl_is_right = self._check_red_light_crossing(prev_x, prev_y)
+
         if (self.collision or self.goal_reached) and self.end_time is None:
             self.end_time = pygame.time.get_ticks()
 
@@ -761,11 +822,13 @@ class RacingGame:
 
         done  = self.collision or self.goal_reached
         info  = {
-            'speed':        self.car.speed,
-            'distance':     self.total_distance,
-            'collision':    self.collision,
-            'goal_reached': self.goal_reached,
-            'time':         self.current_time / 1000,
+            'speed':               self.car.speed,
+            'distance':            self.total_distance,
+            'collision':           self.collision,
+            'goal_reached':        self.goal_reached,
+            'time':                self.current_time / 1000,
+            'red_light_crossed':   red_light_crossed,
+            'red_light_right_turn': rl_is_right,
         }
         return reward, done, info
 

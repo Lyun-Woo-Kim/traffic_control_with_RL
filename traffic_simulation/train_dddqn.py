@@ -163,23 +163,19 @@ def get_frame_reward(state, is_collision, is_goal,
     # ── 신호 위반 패널티 ──────────────────────────────────────────
     # _get_traffic_light_info() 에서 차량 진행 방향과 일치하는 신호등만 반환하므로
     # 이 패널티는 해당 차량이 실제로 따라야 하는 신호등에 대해서만 적용됨
-    tl_exists     = state[27]
-    tl_state      = state[28]
+    tl_exists      = state[27]
+    tl_state       = state[28]
     right_turnable = state[29]   # 1 = 빨간불 우회전 허용
     if tl_exists == 1:
         if tl_state == 0 and right_turnable == 0:   # 빨간불 + 우회전 불가
-            if speed_n > 0.05:
-                # 속도에 비례한 패널티 — 빠를수록 더 큰 위반
-                reward -= 5.0 * speed_n
-            else:
-                # 빨간불에 정지 → 준수 보상
-                reward += 0.5
-        # right_turnable == 1 이면 빨간불이라도 패널티 없음 (우회전 합법)
+            # 정지선 위반 패널티는 execute_action_with_duration() 에서 이벤트 기반으로 처리
+            # 여기서는 정지 준수 보상만 지급
+            if speed_n <= 0.05:
+                reward += 0.5   # 빨간불에 정지 → 준수 보상
         elif tl_state == 1:  # 노란불 — 감속해야 함
             if speed_n > 0.2:
                 reward -= 2.0 * (speed_n - 0.2)
             else:
-                # 노란불에 감속 중 → 소량 보상
                 reward += 0.2
 
     return reward
@@ -365,6 +361,11 @@ def execute_action_with_duration(game, agent, action, duration_frames, ori_check
         curr_distance = math.dist([game.car.x, game.car.y], curr_standard_cp)
 
         timeout = curr_time / 1000 > max_time
+
+        # 정지선 위반: 빨간불 정지선을 넘은 프레임에 즉각 큰 패널티
+        # 우회전(red_light_right_turn=True)은 합법이므로 패널티 없음
+        if info.get('red_light_crossed') and not info.get('red_light_right_turn'):
+            total_reward -= 300.0
 
         cp_r = 0
         if len(game.checkpoints_reached) > processed_cp_count:
