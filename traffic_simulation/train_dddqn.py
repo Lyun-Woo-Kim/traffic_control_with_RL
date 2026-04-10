@@ -314,7 +314,7 @@ def train_headless(vehicle_config_paths,
                    target_update=2000,
                    log_interval=100,
                    batch_size=512,
-                   track_file="./track_data.json",
+                   track_file=None,
                    layer_num=3, max_size=512, lr=0.0001,
                    max_time=30):
     """
@@ -328,6 +328,9 @@ def train_headless(vehicle_config_paths,
       - 차량 JSON의 checkpoints 마지막 항목 = GOAL
       - 주행 중 다른 차량을 센서로 감지 (레이캐스팅에 bounding box 포함)
     """
+
+    if track_file is None:
+        track_file = _sim_asset("track_data.json")
 
     pygame.init()
     game = RacingGame(track_file, vehicle_configs=vehicle_config_paths, headless=True)
@@ -600,6 +603,6 @@ if __name__ == "__main__":
         max_size      = args.max_size,
         lr            = args.lr,
         batch_size    = args.batch_size,
-        track_file    = "./track_data.json",
+        track_file    = _sim_asset("track_data.json"),
         max_time      = args.max_time,
     )
