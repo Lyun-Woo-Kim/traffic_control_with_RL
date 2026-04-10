@@ -17,6 +17,15 @@ import torch
 import torch.nn as nn
 
 from traffic_env import RacingGame
+from pathlib import Path
+
+# 이 스크립트가 있는 traffic_simulation 폴더 (CWD와 무관하게 에셋 경로 해석)
+_SIM_DIR = Path(__file__).resolve().parent
+
+
+def _sim_asset(*parts: str) -> str:
+    """traffic_simulation 기준 상대 경로를 절대 경로 문자열로 반환."""
+    return str(_SIM_DIR.joinpath(*parts))
 
 # ============================================================
 # 상수
@@ -576,10 +585,10 @@ if __name__ == "__main__":
 
     train_headless(
         vehicle_config_paths=[
-            "./vehicles/vehicle_1.json",
-            "./vehicles/vehicle_2.json",
-            "./vehicles/vehicle_3.json",
-            "./vehicles/vehicle_4.json",
+            _sim_asset("vehicles", "vehicle_1.json"),
+            _sim_asset("vehicles", "vehicle_2.json"),
+            _sim_asset("vehicles", "vehicle_3.json"),
+            _sim_asset("vehicles", "vehicle_4.json"),
         ],
         max_episode   = 300000,
         action_size   = 8,
