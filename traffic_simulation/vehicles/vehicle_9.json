@@ -1,0 +1,20 @@
+{
+  "_type": "소형 트럭 (Light Truck) — e.g. Porter / Bongo",
+  "_scale_note": "1 pixel = 약 5cm. 트랙 폭 100px = 5m",
+
+  "max_speed": 260,
+  "acceleration_force": 80,
+  "brake_force": 190,
+  "friction": 0.95,
+  "lateral_friction": 0.84,
+  "drift_friction": 0.50,
+  "brake_factor": 0.95,
+  "turn_speed": 1.8,
+  "sensor_range": 230,
+  "width": 22,
+  "length": 56,
+  "speed_friction_reduction": 0.02,
+  "drift_extra_friction_reduction": 0.04,
+  "brake_speed_penalty": 0.15,
+  "start_point": 0
+}

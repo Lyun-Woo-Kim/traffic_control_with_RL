@@ -1,0 +1,20 @@
+{
+  "_type": "대형 트럭 (Heavy Truck) — e.g. 화물트럭",
+  "_scale_note": "1 pixel = 약 5cm. 트랙 폭 100px = 5m",
+
+  "max_speed": 200,
+  "acceleration_force": 50,
+  "brake_force": 140,
+  "friction": 0.95,
+  "lateral_friction": 0.82,
+  "drift_friction": 0.60,
+  "brake_factor": 0.97,
+  "turn_speed": 1.5,
+  "sensor_range": 220,
+  "width": 28,
+  "length": 70,
+  "speed_friction_reduction": 0.02,
+  "drift_extra_friction_reduction": 0.03,
+  "brake_speed_penalty": 0.20,
+  "start_point": 0
+}
