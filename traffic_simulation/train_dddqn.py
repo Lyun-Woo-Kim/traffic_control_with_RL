@@ -115,27 +115,27 @@ def get_frame_reward(state, is_collision, is_goal,
                      max_speed, prev_distance):
     reward = 0.0
 
-    if is_collision: return -500.0
-    if is_goal:      return  500.0
+    if is_collision: return -200.0
+    if is_goal:      return  200.0
 
-    # 타임아웃 패널티
+    # 타임 패널티
     time_ratio = curr_time / 1000 / max_time
     reward -= time_ratio * 0.5
 
     # 목표 접근 보상
     if dis_gap > 0:
-        reward += (prev_distance - curr_distance) * 0.5
+        reward += (prev_distance - curr_distance) * 2.0
 
     # 속도 보상
-    reward += state[2] * max_speed * 0.002
+    speed_n = state[10]
+    reward += speed_n * max_speed * 0.002
 
     # 체크포인트 보상
     reward += cp_reward
 
     # ── 역주행 패널티 ─────────────────────────────────────────────
-    vel_x_n = state[3]
-    vel_y_n = state[4]
-    speed_n = state[2]
+    vel_x_n = state[11]
+    vel_y_n = state[12]
     cos_a   = state[8] * 2.0 - 1.0
     sin_a   = state[9] * 2.0 - 1.0
 
@@ -228,17 +228,36 @@ class DuelingDoubleDQN_DualHead:
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.loss_fn   = nn.SmoothL1Loss()
 
-        self.gamma        = 0.99
-        self.epsilon      = 1.0
-        self.epsilon_min  = 0.1
+        self.gamma         = 0.99
+        self.epsilon       = 1.0
+        self.epsilon_min   = 0.1
         self.epsilon_decay = 0.9995
+        self.epsilon_table = [self.epsilon]
 
         self.replay_memory        = []
         self.replay_memory_length = replay_memory_length
         self.duration_map = {i: (i + 1) * 3 for i in range(duration_size)}
 
-    def decay_epsilon(self):
-        self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+    def init_epsilon_table(self, segment_count):
+        segment_count = max(int(segment_count), 1)
+        self.epsilon_table = [self.epsilon for _ in range(segment_count)]
+
+    def get_segment_epsilon(self, segment_idx):
+        if not self.epsilon_table:
+            return self.epsilon
+        idx = min(max(int(segment_idx), 0), len(self.epsilon_table) - 1)
+        return self.epsilon_table[idx]
+
+    def decay_epsilon(self, segment_idx=None):
+        if segment_idx is None:
+            self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+            self.epsilon_table = [max(e * self.epsilon_decay, self.epsilon_min) for e in self.epsilon_table]
+            return
+
+        if not self.epsilon_table:
+            self.init_epsilon_table(1)
+        idx = min(max(int(segment_idx), 0), len(self.epsilon_table) - 1)
+        self.epsilon_table[idx] = max(self.epsilon_table[idx] * self.epsilon_decay, self.epsilon_min)
 
     def get_real_action(self, action_index):
         actions = {
@@ -256,15 +275,16 @@ class DuelingDoubleDQN_DualHead:
     def get_duration_frames(self, duration_index):
         return self.duration_map.get(duration_index, 3)
 
-    def predict(self, state, greedy=False):
+    def predict(self, state, segment_idx=0, greedy=False):
         with torch.no_grad():
             t = torch.FloatTensor(state).unsqueeze(0).to(self.device)
             aq, dq = self.model(t)
+            epsilon = self.get_segment_epsilon(segment_idx)
             action  = (aq.argmax().item()
-                       if greedy or random.random() >= self.epsilon
+                       if greedy or random.random() >= epsilon
                        else random.randint(0, self.action_size - 1))
             dur_idx = (dq.argmax().item()
-                       if greedy or random.random() >= self.epsilon * 0.3
+                       if greedy or random.random() >= epsilon * 0.3
                        else random.randint(0, self.duration_size - 1))
             return aq, dq, action, dur_idx, self.get_duration_frames(dur_idx)
 
@@ -344,6 +364,9 @@ def train_headless(vehicle_config_paths,
                                               0, lr, layer_num, max_size)
                    for _ in range(n)]
     for i in range(n):
+        segment_count = len(game.car_checkpoints[i]) + (1 if game.car_goals[i] is not None else 0)
+        agents[i].init_epsilon_table(segment_count)
+        target_nets[i].init_epsilon_table(segment_count)
         target_nets[i].model.load_state_dict(agents[i].model.state_dict())
         target_nets[i].model.eval()
 
@@ -357,12 +380,21 @@ def train_headless(vehicle_config_paths,
         line = f"[{ts}] {msg}\n"
         log_file.write(line); log_file.flush(); print(msg)
 
+    def _get_curr_max_time(curr_episode):
+        progress = curr_episode / max(max_episode, 1)
+        if progress < (1 / 3):
+            return 15
+        if progress < (2 / 3):
+            return 25
+        return 40
+
     log("=" * 60)
     log(f"MULTI-AGENT DDDQN  |  {n} agents")
     log(f"  Device : {agents[0].device}")
     log(f"  Input  : {INPUT_SIZE}  Actions: {action_size}  Durations: {duration_size}")
     log(f"  Layer  : {layer_num}  MaxSize: {max_size}  LR: {lr}")
     log(f"  Track  : {track_file}")
+    log("  MaxTime Schedule : first 1/3=15s, second 1/3=25s, final 1/3=40s")
     for i in range(n):
         cps = game.car_checkpoints[i]
         log(f"  Agent{i+1}: {len(cps)} nav cps → goal {game.car_goals[i]}")
@@ -383,6 +415,10 @@ def train_headless(vehicle_config_paths,
             std_cps.append(list(first) if first else [sp[0], sp[1]])
             dis_gps.append(math.dist(sp, first) if first else 1.0)
         return std_cps, dis_gps
+
+    def _get_segment_idx(agent_idx):
+        segment_count = max(len(agents[agent_idx].epsilon_table), 1)
+        return min(processed_cp_cnts[agent_idx], segment_count - 1)
 
     standard_cps, dis_gaps = _reset_episode_state()
 
@@ -410,6 +446,7 @@ def train_headless(vehicle_config_paths,
     log("-" * 60)
 
     while episode < max_episode:
+        curr_max_time = _get_curr_max_time(episode)
 
         # ── Phase 1: 새 행동 결정 (duration 만료된 에이전트) ────────
         for i in range(n):
@@ -425,7 +462,8 @@ def train_headless(vehicle_config_paths,
                     ep_rew_buf[i]     += accumulated_rews[i]
                     accumulated_rews[i] = 0.0
 
-                _, _, action, dur_idx, duration = agents[i].predict(state)
+                seg_idx = _get_segment_idx(i)
+                _, _, action, dur_idx, duration = agents[i].predict(state, segment_idx=seg_idx)
                 pending_states[i]    = state
                 pending_actions[i]   = action
                 pending_dur_idxs[i]  = dur_idx
@@ -450,7 +488,9 @@ def train_headless(vehicle_config_paths,
             # 체크포인트 진행
             cp_r = 0
             if result['cp_reached']:
-                cp_r = 50
+                cp_r = 100
+                completed_seg_idx = _get_segment_idx(i)
+                agents[i].decay_epsilon(completed_seg_idx)
                 processed_cp_cnts[i] += 1
                 nav_cps = game.car_checkpoints[i]
                 if processed_cp_cnts[i] < len(nav_cps):
@@ -463,12 +503,12 @@ def train_headless(vehicle_config_paths,
 
             curr_dist  = math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
             frame_state = get_data(game, i, standard_cps[i], dis_gaps[i])
-            is_timeout  = (game.current_time or 0) / 1000 > max_time
+            is_timeout  = (game.current_time or 0) / 1000 > curr_max_time
 
             frame_reward = get_frame_reward(
                 frame_state,
                 result['collision'], result['goal_reached'],
-                curr_dist, game.current_time or 0, max_time,
+                curr_dist, game.current_time or 0, curr_max_time,
                 cp_r, dis_gaps[i], pending_actions[i],
                 game.cars[i].max_speed, prev_dists[i]
             )
@@ -479,7 +519,7 @@ def train_headless(vehicle_config_paths,
 
             # 타임아웃 추가 패널티
             if is_timeout:
-                frame_reward -= 5000.0
+                frame_reward -= 500.0
 
             accumulated_rews[i] += frame_reward
             remaining_frames[i] -= 1
@@ -487,6 +527,8 @@ def train_headless(vehicle_config_paths,
             done_i = result['collision'] or result['goal_reached'] or is_timeout
 
             if done_i:
+                terminal_seg_idx = _get_segment_idx(i)
+                agents[i].decay_epsilon(terminal_seg_idx)
                 next_state = get_data(game, i, standard_cps[i], dis_gaps[i])
                 agents[i].add_memory([
                     pending_states[i], pending_actions[i], pending_dur_idxs[i],
@@ -501,7 +543,7 @@ def train_headless(vehicle_config_paths,
                     goal_counts[i] += 1
 
         # ── Phase 4: 학습 ───────────────────────────────────────────
-        if action_step % 5 == 0:
+        if action_step % 20 == 0:
             for i in range(n):
                 if len(agents[i].replay_memory) > batch_size:
                     tl, al, dl = agents[i].train_step(batch_size, target_nets[i])
@@ -519,7 +561,6 @@ def train_headless(vehicle_config_paths,
 
             for i in range(n):
                 ep_rewards[i].append(ep_rew_buf[i])
-                agents[i].decay_epsilon()
 
             # 로그
             if episode % log_interval == 0:
@@ -536,8 +577,12 @@ def train_headless(vehicle_config_paths,
                 rew_str  = " | ".join(f"A{i+1}:{avg_rews[i]:7.1f}" for i in range(n))
                 loss_str = " | ".join(f"A{i+1}:{avg_a_losses[i]:.3f}" for i in range(n))
                 goal_str = " ".join(f"A{i+1}:{goal_counts[i]}" for i in range(n))
-                eps_str  = " ".join(f"A{i+1}:{agents[i].epsilon:.3f}" for i in range(n))
+                eps_str  = " ".join(
+                    f"A{i+1}:S{_get_segment_idx(i)}={agents[i].get_segment_epsilon(_get_segment_idx(i)):.3f}"
+                    for i in range(n)
+                )
                 log(f"[Ep {episode:5d}] Goals:[{goal_str}] | ε:[{eps_str}] | "
+                    f"MaxT:{curr_max_time:2d}s | "
                     f"Reward:[{rew_str}] | ALoss:[{loss_str}] | "
                     f"{eps_per_sec:.1f}ep/s | {time.strftime('%H:%M:%S')}")
                 last_log_time = time.time()
@@ -579,11 +624,11 @@ def train_headless(vehicle_config_paths,
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--layer_num",  type=int,   default=3)
+    parser.add_argument("--layer_num",  type=int,   default=4)
     parser.add_argument("--max_size",   type=int,   default=512)
     parser.add_argument("--lr",         type=float, default=0.0003)
-    parser.add_argument("--batch_size", type=int,   default=512)
-    parser.add_argument("--max_time",   type=int,   default=30)
+    parser.add_argument("--batch_size", type=int,   default=128)
+    parser.add_argument("--max_time",   type=int,   default=15)
     args = parser.parse_args()
 
     train_headless(
@@ -593,7 +638,7 @@ if __name__ == "__main__":
             _sim_asset("vehicles", "vehicle_3.json"),
             _sim_asset("vehicles", "vehicle_4.json"),
         ],
-        max_episode   = 300000,
+        max_episode   = 90000,
         action_size   = 8,
         duration_size = 6,
         replay_length = 50000,

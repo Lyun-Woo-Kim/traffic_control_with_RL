@@ -224,11 +224,12 @@ class RacingGame:
         self.traffic_lights  = []
         self.lane_segments: List[Tuple] = []
         self.start_positions = []
+        self.start_angles_deg = []
         self.end_pos         = None
         self.checkpoints     = []    # 트랙 전체 체크포인트 좌표 목록
 
-        self.tl_green_ms  = 7000
-        self.tl_yellow_ms = 3000
+        self.tl_green_ms  = 12000
+        self.tl_yellow_ms = 2000
         self.tl_seq_idx   = 0
         self.tl_seq_timer = 0
         self.tl_seq_phase = 'green'
@@ -259,7 +260,8 @@ class RacingGame:
         self.total_distance     = 0
         self.start_time         = pygame.time.get_ticks()
         self.end_time           = None
-        self.current_time       = None
+        self.current_time       = 0.0
+        self.sim_time_ms        = 0.0
         self.checkpoints_reached = []   # 하위 호환 (car 0)
 
         if not headless:
@@ -291,7 +293,12 @@ class RacingGame:
             else:
                 sp = [self.width // 2, self.height // 2]
 
-            self.cars.append(Car(sp[0], sp[1], angle=0, car_info=cj))
+            if self.start_angles_deg:
+                start_angle_deg = self.start_angles_deg[sp_idx % len(self.start_angles_deg)]
+            else:
+                start_angle_deg = cj.get('start_angle_deg', 0.0)
+            start_angle = math.radians(start_angle_deg)
+            self.cars.append(Car(sp[0], sp[1], angle=start_angle, car_info=cj))
 
             # 체크포인트 로드: 마지막 = GOAL, 나머지 = nav waypoints
             cp_indices = cj.get('checkpoints', [])
@@ -340,8 +347,8 @@ class RacingGame:
             if self.lane_data:
                 self.track_surface, self.track_mask = self._build_track_from_lane_data()
 
-            self.tl_green_ms  = data.get('tl_green_ms',  7000)
-            self.tl_yellow_ms = data.get('tl_yellow_ms', 3000)
+            self.tl_green_ms  = data.get('tl_green_ms',  12000)
+            self.tl_yellow_ms = data.get('tl_yellow_ms', 2000)
 
             self.traffic_lights = []
             for i, tl in enumerate(data.get('traffic_lights', [])):
@@ -359,6 +366,8 @@ class RacingGame:
                 self.start_positions = [data['start_pos']]
             else:
                 self.start_positions = []
+
+            self.start_angles_deg = data.get('start_angles_deg', [])
 
             self.end_pos     = data.get('end_pos')
             self.checkpoints = data.get('checkpoints', [])
@@ -817,7 +826,12 @@ class RacingGame:
                 sp = self.start_positions[sp_idx % len(self.start_positions)]
             else:
                 sp = [self.width // 2, self.height // 2]
-            self.cars[i]              = Car(sp[0], sp[1], angle=0, car_info=cj)
+            if self.start_angles_deg:
+                start_angle_deg = self.start_angles_deg[sp_idx % len(self.start_angles_deg)]
+            else:
+                start_angle_deg = cj.get('start_angle_deg', 0.0)
+            start_angle = math.radians(start_angle_deg)
+            self.cars[i]              = Car(sp[0], sp[1], angle=start_angle, car_info=cj)
             self.car_collisions[i]    = False
             self.car_goal_reached[i]  = False
             self.car_cp_reached[i]    = []
@@ -831,7 +845,8 @@ class RacingGame:
         self.total_distance     = 0
         self.start_time         = pygame.time.get_ticks()
         self.end_time           = None
-        self.current_time       = None
+        self.current_time       = 0.0
+        self.sim_time_ms        = 0.0
         self.camera_x           = self.camera_y = 0
         self.checkpoints_reached = []
         self.tl_prev_dots        = {}
@@ -860,7 +875,8 @@ class RacingGame:
 
         dt    = 1 / self.fps
         dt_ms = dt * 1000
-        self.current_time = pygame.time.get_ticks() - self.start_time
+        self.sim_time_ms += dt_ms
+        self.current_time = self.sim_time_ms
 
         prev_positions = [(car.x, car.y) for car in self.cars]
 

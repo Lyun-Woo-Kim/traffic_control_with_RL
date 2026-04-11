@@ -16,5 +16,7 @@
   "speed_friction_reduction": 0.03,
   "drift_extra_friction_reduction": 0.05,
   "brake_speed_penalty": 0.08,
-  "start_point": 0
+  "start_point": 1,
+  "start_angle_deg": 138.01,
+  "checkpoints": [5, 6, 2, 3, 4]
 }

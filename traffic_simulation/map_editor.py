@@ -41,11 +41,12 @@ class TrackEditor:
         self.checkpoints     = []
         self.traffic_lights  = []
         self.start_positions = []   # 다중 시작 위치 (인덱스 = start_point 번호)
+        self.start_angles_deg = []  # start_positions와 같은 인덱스의 시작 각도(도)
         self.end_pos         = None
 
         # 순차 신호등 상태 (0번 → 1번 → 2번 → ... → 0번 순환)
-        self.TL_GREEN_MS  = 7000   # 초록 지속 시간 (ms)
-        self.TL_YELLOW_MS = 3000   # 노랑 지속 시간 (ms)
+        self.TL_GREEN_MS  = 12000  # 초록 지속 시간 (ms)
+        self.TL_YELLOW_MS = 2000   # 노랑 지속 시간 (ms)
         self.tl_seq_idx   = 0      # 현재 활성 신호등 인덱스
         self.tl_seq_timer = 0      # 현재 단계 경과 시간 (ms)
         self.tl_seq_phase = 'green'  # 'green' or 'yellow'
@@ -53,6 +54,7 @@ class TrackEditor:
         self.current_tool   = "line"
         self.drag_start     = None
         self.temp_points    = []
+        self.pending_start_pos = None
 
         self.ui_height      = 100
         self.font           = pygame.font.SysFont('arial', 16)
@@ -335,10 +337,28 @@ class TrackEditor:
                 self._draw_traffic_light_ghost(ghost, mouse_pos, None)
 
         elif self.current_tool == 'start':
-            pygame.draw.circle(ghost, (0, 200, 0, 120), mouse_pos, 20)
-            pygame.draw.circle(ghost, (0, 200, 0, 200), mouse_pos, 20, 3)
-            lbl = self.font.render(str(len(self.start_positions)), True, (0, 0, 0, 200))
-            ghost.blit(lbl, lbl.get_rect(center=mouse_pos))
+            if self.pending_start_pos:
+                sp = self.pending_start_pos
+                pygame.draw.circle(ghost, (0, 200, 0, 120), sp, 20)
+                pygame.draw.circle(ghost, (0, 200, 0, 200), sp, 20, 3)
+                dx = mx - sp[0]
+                dy = my - sp[1]
+                mag = math.hypot(dx, dy)
+                if mag > 5:
+                    ex = int(sp[0] + dx / mag * 35)
+                    ey = int(sp[1] + dy / mag * 35)
+                    pygame.draw.line(ghost, (255, 150, 0, 220), sp, (ex, ey), 3)
+                    angle = math.atan2(dy, dx)
+                    a1 = (int(ex + math.cos(angle+2.5)*8), int(ey + math.sin(angle+2.5)*8))
+                    a2 = (int(ex + math.cos(angle-2.5)*8), int(ey + math.sin(angle-2.5)*8))
+                    pygame.draw.polygon(ghost, (255, 150, 0, 220), [(ex, ey), a1, a2])
+                lbl = self.font.render(str(len(self.start_positions)), True, (0, 0, 0, 200))
+                ghost.blit(lbl, lbl.get_rect(center=sp))
+            else:
+                pygame.draw.circle(ghost, (0, 200, 0, 120), mouse_pos, 20)
+                pygame.draw.circle(ghost, (0, 200, 0, 200), mouse_pos, 20, 3)
+                lbl = self.font.render(str(len(self.start_positions)), True, (0, 0, 0, 200))
+                ghost.blit(lbl, lbl.get_rect(center=mouse_pos))
 
         elif self.current_tool == 'end':
             pygame.draw.circle(ghost, (255,  50, 50, 120), mouse_pos, 20)
@@ -373,17 +393,39 @@ class TrackEditor:
     def _build_direction_grid(self):
         """
         10x10 px 셀마다 방향 벡터 저장
-        - 단일 세그먼트 셀: {"is_intersection": 0, "dir": [dx, dy]}
+        - 단일 세그먼트 셀:
+          중앙선을 기준으로
+          * 그린 방향의 오른쪽 차로 = 정방향
+          * 왼쪽 차로 = 역방향
         - 교차(2개+ 세그먼트) 셀: {"is_intersection": 1, "dir": [0.0, 0.0]}
         """
-        cell_map = {}   # key -> list of (seg_id, ux, uy)
+        cell_map = {}   # key -> list of (seg_id, lane_side, dir_x, dir_y)
+        cell_size = 10.0
 
         for seg_id, seg in enumerate(self.segments):
             center_pts = (self._get_bezier_points(*seg['points'])
                           if seg['type'] == 'curve' else seg['points'])
-            for (px, py, ux, uy) in self._sample_polyline(center_pts, step=10):
-                key = f"{int(px/10)}_{int(py/10)}"
-                cell_map.setdefault(key, []).append((seg_id, ux, uy))
+            half_w = seg['width'] / 2
+            lateral_offsets = np.arange(-half_w + cell_size / 2, half_w, cell_size)
+            if len(lateral_offsets) == 0:
+                lateral_offsets = np.array([0.0])
+
+            for (cx, cy, ux, uy) in self._sample_polyline(center_pts, step=10):
+                perp_x, perp_y = -uy, ux
+                for offset in lateral_offsets:
+                    px = cx + perp_x * offset
+                    py = cy + perp_y * offset
+                    key = f"{int(px/10)}_{int(py/10)}"
+
+                    # offset < 0 이 그린 방향 기준 오른쪽 차로
+                    if offset < 0:
+                        lane_side = 'right'
+                        dir_x, dir_y = ux, uy
+                    else:
+                        lane_side = 'left'
+                        dir_x, dir_y = -ux, -uy
+
+                    cell_map.setdefault(key, []).append((seg_id, lane_side, dir_x, dir_y))
 
         grid = {}
         for key, entries in cell_map.items():
@@ -391,8 +433,14 @@ class TrackEditor:
             if len(seg_ids) >= 2:
                 grid[key] = {"is_intersection": 1, "dir": [0.0, 0.0]}
             else:
-                avg_x = sum(e[1] for e in entries) / len(entries)
-                avg_y = sum(e[2] for e in entries) / len(entries)
+                lane_sides = {e[1] for e in entries}
+                if len(lane_sides) >= 2:
+                    # 중앙선에 걸친 셀은 방향 중립 처리
+                    grid[key] = {"is_intersection": 0, "dir": [0.0, 0.0]}
+                    continue
+
+                avg_x = sum(e[2] for e in entries) / len(entries)
+                avg_y = sum(e[3] for e in entries) / len(entries)
                 mag   = math.hypot(avg_x, avg_y)
                 if mag > 0:
                     avg_x /= mag; avg_y /= mag
@@ -438,6 +486,7 @@ class TrackEditor:
             'tl_yellow_ms':    self.TL_YELLOW_MS,
             'checkpoints':      [[p[0],p[1]] for p in self.checkpoints],
             'start_positions':  [[p[0],p[1]] for p in self.start_positions],
+            'start_angles_deg': [round(a, 2) for a in self.start_angles_deg],
             'end_pos':           list(self.end_pos) if self.end_pos else None,
         }
         with open("track_data.json", "w") as f:
@@ -470,16 +519,20 @@ class TrackEditor:
                                 elif act == 'clear':
                                     self.segments=[]; self.checkpoints=[]
                                     self.traffic_lights=[]
-                                    self.start_positions=[]; self.end_pos=None
+                                    self.start_positions=[]; self.start_angles_deg=[]; self.end_pos=None
                                     self.tl_seq_idx=0; self.tl_seq_timer=0
                                     self.tl_seq_phase='green'
                                 elif act == 'undo':
                                     if   self.segments:         self.segments.pop()
-                                    elif self.start_positions:  self.start_positions.pop()
+                                    elif self.start_positions:
+                                        self.start_positions.pop()
+                                        if self.start_angles_deg:
+                                            self.start_angles_deg.pop()
                                 else:
                                     self.current_tool = act
                                     self.temp_points  = []
                                     self.drag_start   = None
+                                    self.pending_start_pos = None
                     else:
                         t_pos = (mx, my - self.ui_height)
                         if   self.current_tool == 'line':
@@ -496,7 +549,15 @@ class TrackEditor:
                         elif self.current_tool == 'light':
                             self.drag_start = t_pos   # 드래그로 방향 설정
                         elif self.current_tool == 'start':
-                            self.start_positions.append(t_pos)
+                            if self.pending_start_pos is None:
+                                self.pending_start_pos = t_pos
+                            else:
+                                dx = t_pos[0] - self.pending_start_pos[0]
+                                dy = t_pos[1] - self.pending_start_pos[1]
+                                angle_deg = math.degrees(math.atan2(dy, dx)) if math.hypot(dx, dy) > 5 else 0.0
+                                self.start_positions.append(self.pending_start_pos)
+                                self.start_angles_deg.append(angle_deg)
+                                self.pending_start_pos = None
                         elif self.current_tool == 'end':
                             self.end_pos = t_pos
 
@@ -564,6 +625,14 @@ class TrackEditor:
                 pygame.draw.circle(sub, self.BLACK,  sp, 20, 3)
                 lbl = self.font.render(str(idx), True, self.BLACK)
                 sub.blit(lbl, lbl.get_rect(center=sp))
+                if idx < len(self.start_angles_deg):
+                    angle = math.radians(self.start_angles_deg[idx])
+                    ex = int(sp[0] + math.cos(angle) * 35)
+                    ey = int(sp[1] + math.sin(angle) * 35)
+                    pygame.draw.line(sub, self.ORANGE, sp, (ex, ey), 3)
+                    a1 = (int(ex + math.cos(angle+2.5)*8), int(ey + math.sin(angle+2.5)*8))
+                    a2 = (int(ex + math.cos(angle-2.5)*8), int(ey + math.sin(angle-2.5)*8))
+                    pygame.draw.polygon(sub, self.ORANGE, [(ex, ey), a1, a2])
             if self.end_pos: self._draw_start_finish_line(sub, self.end_pos, False)
             for idx, cp in enumerate(self.checkpoints):
                 pygame.draw.circle(sub, self.YELLOW, cp, 14)
