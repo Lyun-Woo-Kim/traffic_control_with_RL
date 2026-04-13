@@ -417,8 +417,10 @@ class TrackEditor:
                     py = cy + perp_y * offset
                     key = f"{int(px/10)}_{int(py/10)}"
 
-                    # offset < 0 이 그린 방향 기준 오른쪽 차로
-                    if offset < 0:
+                    # perp = (-uy, ux) 은 pygame 좌표(y↓)에서 진행 방향의 오른쪽 수직벡터.
+                    # 따라서 offset > 0 이 운전자 기준 오른쪽 차로 (한국 우측통행 정방향),
+                    #         offset < 0 이 왼쪽 차로 (역방향 / 맞은편 차선).
+                    if offset > 0:
                         lane_side = 'right'
                         dir_x, dir_y = ux, uy
                     else:

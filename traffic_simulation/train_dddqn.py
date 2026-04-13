@@ -126,9 +126,9 @@ def get_frame_reward(state, is_collision, is_goal,
     if dis_gap > 0:
         reward += (prev_distance - curr_distance) * 2.0
 
-    # 속도 보상
+    # 속도 보상 (스케일 조정: 최대 ~2.0/프레임으로 충돌 패널티 대비 의미 있는 수준)
     speed_n = state[10]
-    reward += speed_n * max_speed * 0.002
+    reward += speed_n * max_speed * 0.005
 
     # 체크포인트 보상
     reward += cp_reward
@@ -149,7 +149,7 @@ def get_frame_reward(state, is_collision, is_goal,
     dir_y = state[25]
     if dir_x != 0.0 or dir_y != 0.0:
         road_vel_dot = vel_x_n * dir_x + vel_y_n * dir_y
-        if heading_vel_dot >= 0.0 and road_vel_dot < -0.1:
+        if heading_vel_dot >= 0.0 and road_vel_dot < -0.3:
             reward -= 5.0
 
     # ── 신호 패널티 ───────────────────────────────────────────────
@@ -160,12 +160,17 @@ def get_frame_reward(state, is_collision, is_goal,
     if tl_exists == 1:
         if tl_state == 0 and right_turnable == 0:   # 빨간불 + 직진/좌회전
             if speed_n <= 0.05:
-                reward += 0.5   # 정지 준수 보상
+                reward += 0.5                        # 정지 준수 보상
+            else:
+                reward -= speed_n * 1.0              # 빨간불 주행 패널티
         elif tl_state == 1:                          # 노란불
             if speed_n > 0.2:
                 reward -= 2.0 * (speed_n - 0.2)
             else:
                 reward += 0.2
+        elif tl_state == 2:                          # 초록불
+            if speed_n > 0.1:
+                reward += 0.3                        # 초록불 주행 보상
 
     return reward
 
@@ -236,7 +241,7 @@ class DuelingDoubleDQN_DualHead:
 
         self.replay_memory        = []
         self.replay_memory_length = replay_memory_length
-        self.duration_map = {i: (i + 1) * 3 for i in range(duration_size)}
+        self.duration_map = {i: (i + 1) * 1 for i in range(duration_size)}
 
     def init_epsilon_table(self, segment_count):
         segment_count = max(int(segment_count), 1)
@@ -284,7 +289,7 @@ class DuelingDoubleDQN_DualHead:
                        if greedy or random.random() >= epsilon
                        else random.randint(0, self.action_size - 1))
             dur_idx = (dq.argmax().item()
-                       if greedy or random.random() >= epsilon * 0.3
+                       if greedy or random.random() >= epsilon * 0.7
                        else random.randint(0, self.duration_size - 1))
             return aq, dq, action, dur_idx, self.get_duration_frames(dur_idx)
 
@@ -336,7 +341,10 @@ def train_headless(vehicle_config_paths,
                    batch_size=512,
                    track_file=None,
                    layer_num=3, max_size=512, lr=0.0001,
-                   max_time=30):
+                   max_time=40,
+                   eval_interval=500,
+                   eval_trials=10,
+                   eval_max_time=40):
     """
     다중 에이전트 독립 DDDQN 학습.
 
@@ -370,9 +378,12 @@ def train_headless(vehicle_config_paths,
         target_nets[i].model.load_state_dict(agents[i].model.state_dict())
         target_nets[i].model.eval()
 
-    # 로그
+    # 로그 / 모델 저장 경로 (스크립트 기준 폴더)
+    save_dir     = _SIM_DIR / "checkpoints"
+    save_dir.mkdir(exist_ok=True)
     lr_str       = str(lr).replace(".", "_")
-    log_filename = f"train_ma_{n}agents_lr_{lr_str}_L{layer_num}_S{max_size}.txt"
+    run_tag      = f"ma_{n}agents_lr_{lr_str}_L{layer_num}_S{max_size}"
+    log_filename = str(save_dir / f"train_{run_tag}.txt")
     log_file     = open(log_filename, 'w', encoding='utf-8')
 
     def log(msg):
@@ -380,21 +391,14 @@ def train_headless(vehicle_config_paths,
         line = f"[{ts}] {msg}\n"
         log_file.write(line); log_file.flush(); print(msg)
 
-    def _get_curr_max_time(curr_episode):
-        progress = curr_episode / max(max_episode, 1)
-        if progress < (1 / 3):
-            return 15
-        if progress < (2 / 3):
-            return 25
-        return 40
-
     log("=" * 60)
     log(f"MULTI-AGENT DDDQN  |  {n} agents")
     log(f"  Device : {agents[0].device}")
     log(f"  Input  : {INPUT_SIZE}  Actions: {action_size}  Durations: {duration_size}")
     log(f"  Layer  : {layer_num}  MaxSize: {max_size}  LR: {lr}")
     log(f"  Track  : {track_file}")
-    log("  MaxTime Schedule : first 1/3=15s, second 1/3=25s, final 1/3=40s")
+    log(f"  MaxTime(train): {max_time}s  |  Eval every {eval_interval} ep  |  "
+        f"Eval trials: {eval_trials}  |  Eval MaxTime: {eval_max_time}s")
     for i in range(n):
         cps = game.car_checkpoints[i]
         log(f"  Agent{i+1}: {len(cps)} nav cps → goal {game.car_goals[i]}")
@@ -442,12 +446,33 @@ def train_headless(vehicle_config_paths,
     start_time   = time.time()
     last_log_time = start_time
 
+    # ── 에피소드별 상세 통계 ─────────────────────────────────────
+    # 에피소드 종료 원인 카운터 (누적)
+    ep_collision_cnts = [0] * n
+    ep_timeout_cnts   = [0] * n
+    ep_goal_cnts_ep   = [0] * n   # goal_counts와 별도로 interval 집계용
+
+    # 에피소드 내 상태 추적
+    ep_done_reason  = [''] * n   # 'collision' / 'timeout' / 'goal'
+    ep_cp_reached   = [0]  * n   # 에피소드 내 CP 도달 수
+
+    # CSV 상세 로그
+    csv_filename = log_filename.replace('.txt', '_detail.csv')
+    csv_file     = open(csv_filename, 'w', encoding='utf-8')
+
+    # ── Evaluation 저장 추적 ─────────────────────────────────────
+    best_eval_times = [float('inf')] * n   # 에이전트별 최고 기록 (낮을수록 좋음)
+    best_eval_paths = [None] * n           # 현재 저장된 best-eval 모델 경로
+
+    csv_file.write('episode,' +
+                   ','.join(f'A{i+1}_reward,A{i+1}_done,A{i+1}_cp' for i in range(n)) +
+                   '\n')
+    csv_file.flush()
+
     log(f"\nTraining started  {time.strftime('%H:%M:%S')}")
     log("-" * 60)
 
     while episode < max_episode:
-        curr_max_time = _get_curr_max_time(episode)
-
         # ── Phase 1: 새 행동 결정 (duration 만료된 에이전트) ────────
         for i in range(n):
             if remaining_frames[i] <= 0 and active[i]:
@@ -487,9 +512,14 @@ def train_headless(vehicle_config_paths,
 
             # 체크포인트 진행
             cp_r = 0
+            # curr_dist를 standard_cps 업데이트 전에 계산:
+            # CP 도달 직후 목표가 교체되면 curr_dist가 갑자기 커져
+            # 접근 보상이 거대한 음수로 역전되는 버그를 방지
+            curr_dist = math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
             if result['cp_reached']:
                 cp_r = 100
-                completed_seg_idx = _get_segment_idx(i)
+                ep_cp_reached[i]  += 1
+                completed_seg_idx  = _get_segment_idx(i)
                 agents[i].decay_epsilon(completed_seg_idx)
                 processed_cp_cnts[i] += 1
                 nav_cps = game.car_checkpoints[i]
@@ -501,14 +531,13 @@ def train_headless(vehicle_config_paths,
                     dis_gaps[i]    = math.dist(standard_cps[i], new_target)
                     standard_cps[i] = list(new_target)
 
-            curr_dist  = math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
             frame_state = get_data(game, i, standard_cps[i], dis_gaps[i])
-            is_timeout  = (game.current_time or 0) / 1000 > curr_max_time
+            is_timeout  = (game.current_time or 0) / 1000 > max_time
 
             frame_reward = get_frame_reward(
                 frame_state,
                 result['collision'], result['goal_reached'],
-                curr_dist, game.current_time or 0, curr_max_time,
+                curr_dist, game.current_time or 0, max_time,
                 cp_r, dis_gaps[i], pending_actions[i],
                 game.cars[i].max_speed, prev_dists[i]
             )
@@ -519,7 +548,7 @@ def train_headless(vehicle_config_paths,
 
             # 타임아웃 추가 패널티
             if is_timeout:
-                frame_reward -= 500.0
+                frame_reward -= 100.0
 
             accumulated_rews[i] += frame_reward
             remaining_frames[i] -= 1
@@ -539,8 +568,17 @@ def train_headless(vehicle_config_paths,
                 pending_states[i]   = None
                 active[i]           = False
 
+                # 종료 원인 기록
                 if result['goal_reached']:
-                    goal_counts[i] += 1
+                    goal_counts[i]      += 1
+                    ep_goal_cnts_ep[i]  += 1
+                    ep_done_reason[i]    = 'goal'
+                elif result['collision']:
+                    ep_collision_cnts[i] += 1
+                    ep_done_reason[i]    = 'collision'
+                else:
+                    ep_timeout_cnts[i]   += 1
+                    ep_done_reason[i]    = 'timeout'
 
         # ── Phase 4: 학습 ───────────────────────────────────────────
         if action_step % 20 == 0:
@@ -562,7 +600,15 @@ def train_headless(vehicle_config_paths,
             for i in range(n):
                 ep_rewards[i].append(ep_rew_buf[i])
 
-            # 로그
+            # CSV 상세 기록 (매 에피소드)
+            row = str(episode)
+            for i in range(n):
+                row += f",{ep_rew_buf[i]:.2f},{ep_done_reason[i]},{ep_cp_reached[i]}"
+            csv_file.write(row + '\n')
+            if episode % 10 == 0:
+                csv_file.flush()
+
+            # 콘솔 + txt 로그 (log_interval 마다)
             if episode % log_interval == 0:
                 elapsed     = time.time() - last_log_time
                 eps_per_sec = log_interval / elapsed if elapsed > 0 else 0
@@ -574,6 +620,12 @@ def train_headless(vehicle_config_paths,
                     np.mean(action_losses[i][-100:]) if action_losses[i] else 0.0
                     for i in range(n)
                 ]
+
+                # interval 내 종료 원인 비율
+                col_rate  = [ep_collision_cnts[i] / max(episode, 1) * 100 for i in range(n)]
+                to_rate   = [ep_timeout_cnts[i]   / max(episode, 1) * 100 for i in range(n)]
+                goal_rate = [ep_goal_cnts_ep[i]   / max(episode, 1) * 100 for i in range(n)]
+
                 rew_str  = " | ".join(f"A{i+1}:{avg_rews[i]:7.1f}" for i in range(n))
                 loss_str = " | ".join(f"A{i+1}:{avg_a_losses[i]:.3f}" for i in range(n))
                 goal_str = " ".join(f"A{i+1}:{goal_counts[i]}" for i in range(n))
@@ -581,11 +633,110 @@ def train_headless(vehicle_config_paths,
                     f"A{i+1}:S{_get_segment_idx(i)}={agents[i].get_segment_epsilon(_get_segment_idx(i)):.3f}"
                     for i in range(n)
                 )
+                col_str  = " | ".join(f"A{i+1}:{col_rate[i]:.0f}%" for i in range(n))
+                to_str   = " | ".join(f"A{i+1}:{to_rate[i]:.0f}%"  for i in range(n))
+
                 log(f"[Ep {episode:5d}] Goals:[{goal_str}] | ε:[{eps_str}] | "
-                    f"MaxT:{curr_max_time:2d}s | "
+                    f"MaxT:{max_time:2d}s | "
                     f"Reward:[{rew_str}] | ALoss:[{loss_str}] | "
                     f"{eps_per_sec:.1f}ep/s | {time.strftime('%H:%M:%S')}")
+                log(f"          Collision:[{col_str}] | Timeout:[{to_str}]")
                 last_log_time = time.time()
+
+            # 주기적 체크포인트 저장 (1000 에피소드마다)
+            if episode % 1000 == 0:
+                for i in range(n):
+                    path = str(save_dir / f"agent{i+1}_ep{episode}_{run_tag}.pth")
+                    torch.save(agents[i].model.state_dict(), path)
+                log(f"  [Ckpt] Ep{episode} 모델 저장 완료")
+
+            # ── Evaluation (eval_interval 마다) ──────────────────────
+            if episode % eval_interval == 0 and episode > 0:
+                log(f"  [Eval] Ep{episode} — {eval_trials}회 평가 시작 "
+                    f"(greedy, MaxT={eval_max_time}s) ...")
+
+                # 모델을 eval 모드로 전환
+                for i in range(n):
+                    agents[i].model.eval()
+
+                eval_success = [0] * n
+                eval_times   = [[] for _ in range(n)]
+
+                for _trial in range(eval_trials):
+                    game.reset()
+                    _std_cps, _dis_gps = _reset_episode_state()
+                    _rem   = [0]    * n
+                    _pst   = [None] * n
+                    _act   = [0]    * n
+                    _dur   = [0]    * n
+                    _ctrl  = [agents[i].get_real_action(0) for i in range(n)]
+                    _alive = [True] * n
+                    _cp_c  = [0]    * n
+
+                    while any(_alive):
+                        # 행동 결정 (greedy)
+                        for i in range(n):
+                            if _rem[i] <= 0 and _alive[i]:
+                                st = get_data(game, i, _std_cps[i], _dis_gps[i])
+                                _, _, a, d, dur = agents[i].predict(
+                                    st, segment_idx=0, greedy=True)
+                                _pst[i]  = st
+                                _act[i]  = a
+                                _dur[i]  = d
+                                _ctrl[i] = agents[i].get_real_action(a)
+                                _rem[i]  = dur
+
+                        step_res = game.step(_ctrl)
+
+                        for i, res in enumerate(step_res):
+                            if not _alive[i]:
+                                continue
+                            _rem[i] -= 1
+                            is_to = (game.current_time or 0) / 1000 > eval_max_time
+
+                            # CP 진행
+                            if res['cp_reached']:
+                                _cp_c[i] += 1
+                                nav_cps = game.car_checkpoints[i]
+                                new_tgt = (nav_cps[_cp_c[i]]
+                                           if _cp_c[i] < len(nav_cps)
+                                           else game.car_goals[i])
+                                if new_tgt:
+                                    _dis_gps[i] = math.dist(_std_cps[i], new_tgt)
+                                    _std_cps[i] = list(new_tgt)
+
+                            if res['goal_reached'] or res['collision'] or is_to:
+                                if res['goal_reached']:
+                                    eval_success[i] += 1
+                                    eval_times[i].append(
+                                        (game.current_time or 0) / 1000.0)
+                                _alive[i] = False
+
+                # 모델 다시 train 모드로
+                for i in range(n):
+                    agents[i].model.train()
+
+                # 결과 처리 및 저장 판단
+                for i in range(n):
+                    sc = eval_success[i]
+                    if sc == eval_trials:
+                        avg_t = np.mean(eval_times[i])
+                        if avg_t < best_eval_times[i]:
+                            # 이전 best 파일 삭제
+                            if best_eval_paths[i] and os.path.exists(best_eval_paths[i]):
+                                os.remove(best_eval_paths[i])
+                            best_eval_times[i] = avg_t
+                            new_path = str(save_dir /
+                                f"agent{i+1}_eval_best_{avg_t:.1f}s_{run_tag}.pth")
+                            torch.save(agents[i].model.state_dict(), new_path)
+                            best_eval_paths[i] = new_path
+                            log(f"  [Eval] Agent{i+1} ✓ {eval_trials}/{eval_trials} "
+                                f"avg={avg_t:.1f}s  → saved  ({new_path})")
+                        else:
+                            log(f"  [Eval] Agent{i+1} ✓ {eval_trials}/{eval_trials} "
+                                f"avg={avg_t:.1f}s  (best={best_eval_times[i]:.1f}s, skip)")
+                    else:
+                        log(f"  [Eval] Agent{i+1} ✗ {sc}/{eval_trials} success — skip")
 
             # 리셋
             game.reset()
@@ -596,6 +747,8 @@ def train_headless(vehicle_config_paths,
             pending_dur_idxs  = [0]    * n
             accumulated_rews  = [0.0]  * n
             processed_cp_cnts = [0]    * n
+            ep_done_reason    = [''] * n
+            ep_cp_reached     = [0]  * n
             current_controls  = [agents[i].get_real_action(0) for i in range(n)]
             active            = [True] * n
             ep_rew_buf        = [0.0]  * n
@@ -609,11 +762,12 @@ def train_headless(vehicle_config_paths,
     log(f"  Training Time  : {total_time/60:.1f} min")
     log("=" * 60)
     log_file.close()
+    csv_file.close()
     pygame.quit()
 
     # 최종 모델 저장
     for i in range(n):
-        path = f"agent{i+1}_final_ep{episode}.pth"
+        path = str(save_dir / f"agent{i+1}_final_ep{episode}_{run_tag}.pth")
         torch.save(agents[i].model.state_dict(), path)
         print(f"  Saved: {path}")
 
@@ -628,7 +782,10 @@ if __name__ == "__main__":
     parser.add_argument("--max_size",   type=int,   default=512)
     parser.add_argument("--lr",         type=float, default=0.0003)
     parser.add_argument("--batch_size", type=int,   default=128)
-    parser.add_argument("--max_time",   type=int,   default=15)
+    parser.add_argument("--max_time",      type=int,   default=40)
+    parser.add_argument("--eval_interval", type=int,   default=500)
+    parser.add_argument("--eval_trials",   type=int,   default=10)
+    parser.add_argument("--eval_max_time", type=int,   default=40)
     args = parser.parse_args()
 
     train_headless(
@@ -638,16 +795,19 @@ if __name__ == "__main__":
             _sim_asset("vehicles", "vehicle_3.json"),
             _sim_asset("vehicles", "vehicle_4.json"),
         ],
-        max_episode   = 90000,
-        action_size   = 8,
-        duration_size = 6,
-        replay_length = 50000,
-        target_update = 2000,
-        log_interval  = 100,
-        layer_num     = args.layer_num,
-        max_size      = args.max_size,
-        lr            = args.lr,
-        batch_size    = args.batch_size,
-        track_file    = _sim_asset("track_data.json"),
-        max_time      = args.max_time,
+        max_episode    = 90000,
+        action_size    = 8,
+        duration_size  = 6,
+        replay_length  = 50000,
+        target_update  = 2000,
+        log_interval   = 100,
+        layer_num      = args.layer_num,
+        max_size       = args.max_size,
+        lr             = args.lr,
+        batch_size     = args.batch_size,
+        track_file     = _sim_asset("track_data.json"),
+        max_time       = args.max_time,
+        eval_interval  = args.eval_interval,
+        eval_trials    = args.eval_trials,
+        eval_max_time  = args.eval_max_time,
     )

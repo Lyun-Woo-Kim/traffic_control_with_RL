@@ -586,7 +586,8 @@ class RacingGame:
             if tl_dir is None:
                 continue
             if tl['state'] != 'red':
-                self.tl_prev_dots.pop((car_idx, tl_idx), None)
+                # prev_dot을 삭제하지 않고 유지 — 초록→빨강 전환 직후에도
+                # 정지선 통과 여부를 연속으로 감지할 수 있도록 함
                 continue
 
             dir_x, dir_y = tl_dir[0], tl_dir[1]
@@ -635,7 +636,7 @@ class RacingGame:
             if j == car_idx:
                 continue
             dist     = math.hypot(car.x - other.x, car.y - other.y)
-            min_dist = (car.length + other.length) * 0.35
+            min_dist = (car.length + other.length) * 0.5
             if dist < min_dist:
                 return True
 
@@ -648,14 +649,16 @@ class RacingGame:
     # 체크포인트 / 골
     # ----------------------------------------------------------
     def _check_checkpoints_for_car(self, car_idx: int) -> int:
-        """미방문 nav 체크포인트에 도달하면 해당 인덱스 반환. 없으면 -1."""
-        car     = self.cars[car_idx]
-        nav_cps = self.car_checkpoints[car_idx]
-        reached = self.car_cp_reached[car_idx]
-        for i, cp in enumerate(nav_cps):
-            if i not in reached:
-                if math.hypot(car.x - cp[0], car.y - cp[1]) < 30:
-                    return i
+        """순서대로 다음 nav 체크포인트에 도달하면 해당 인덱스 반환.
+        순서 외 CP(등록되지 않은 CP 포함)는 무시. 없으면 -1."""
+        car      = self.cars[car_idx]
+        nav_cps  = self.car_checkpoints[car_idx]
+        reached  = self.car_cp_reached[car_idx]
+        next_idx = len(reached)   # 다음에 도달해야 할 CP 인덱스 (순서 강제)
+        if next_idx < len(nav_cps):
+            cp = nav_cps[next_idx]
+            if math.hypot(car.x - cp[0], car.y - cp[1]) < 30:
+                return next_idx
         return -1
 
     def _check_goal_for_car(self, car_idx: int) -> bool:
