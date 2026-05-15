@@ -540,11 +540,17 @@ def _rollout_worker_main(worker_id, cmd_q, result_q, config, snapshots, epsilon_
             config['lr'], config['layer_num'], config['max_size'],
         )
         env_state = _worker_new_env_state(game, n, agents)
+        result_q.put({
+            'type': 'worker_ready',
+            'stage_id': stage_id,
+            'worker_id': worker_id,
+        })
 
         transitions = []
         decay_events = []
         episodes = []
         steps_since_send = 0
+        total_steps = 0
         chunk_steps = max(int(config.get('rollout_chunk_steps', 32)), 1)
         max_time = config['max_time']
 
@@ -581,6 +587,12 @@ def _rollout_worker_main(worker_id, cmd_q, result_q, config, snapshots, epsilon_
                         decay_events = []
                         episodes = []
                         steps_since_send = 0
+                        total_steps = 0
+                        result_q.put({
+                            'type': 'worker_ready',
+                            'stage_id': stage_id,
+                            'worker_id': worker_id,
+                        })
             except pyqueue.Empty:
                 pass
 
@@ -624,6 +636,7 @@ def _rollout_worker_main(worker_id, cmd_q, result_q, config, snapshots, epsilon_
             ]
             results = game.step(current_controls)
             steps_since_send += 1
+            total_steps += 1
 
             for i, result in enumerate(results):
                 if not active[i]:
@@ -694,6 +707,14 @@ def _rollout_worker_main(worker_id, cmd_q, result_q, config, snapshots, epsilon_
                 })
                 game.reset()
                 env_state = _worker_new_env_state(game, n, agents)
+
+            if total_steps in (1, 5, 10):
+                result_q.put({
+                    'type': 'worker_heartbeat',
+                    'stage_id': stage_id,
+                    'worker_id': worker_id,
+                    'steps': total_steps,
+                })
 
             if transitions or decay_events or episodes or steps_since_send >= chunk_steps:
                 result_q.put({
@@ -954,6 +975,13 @@ def train_headless_parallel(vehicle_config_paths,
                 raise RuntimeError(
                     f"Parallel rollout worker {msg.get('worker_id')} failed: {msg.get('error')}"
                 )
+            if msg.get('type') == 'worker_ready':
+                log(f"  [Parallel] worker {msg.get('worker_id')} ready")
+                continue
+            if msg.get('type') == 'worker_heartbeat':
+                log(f"  [Parallel] worker {msg.get('worker_id')} heartbeat "
+                    f"steps={msg.get('steps')}")
+                continue
             if msg.get('stage_id') != stage_id:
                 continue
 
