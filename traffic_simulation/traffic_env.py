@@ -416,7 +416,64 @@ class RacingGame:
                 for i in range(len(pts) - 1):
                     segs.append(((pts[i][0],   pts[i][1]),
                                  (pts[i+1][0], pts[i+1][1])))
+        # NumPy 벡터화 + 공간 인덱스 (속도 최적화용 캐시)
+        # _seg_a / _seg_b : (N, 2) 끝점 배열, _seg_grid : 셀 -> seg index 리스트
+        self._seg_cell_size = 100
+        if segs:
+            self._seg_a = np.asarray([s[0] for s in segs], dtype=np.float32)
+            self._seg_b = np.asarray([s[1] for s in segs], dtype=np.float32)
+        else:
+            self._seg_a = np.zeros((0, 2), dtype=np.float32)
+            self._seg_b = np.zeros((0, 2), dtype=np.float32)
+        self._seg_grid = self._build_seg_spatial_index(
+            self._seg_a, self._seg_b, self._seg_cell_size)
         return segs
+
+    @staticmethod
+    def _build_seg_spatial_index(seg_a: np.ndarray, seg_b: np.ndarray, cell: int) -> dict:
+        """차선 세그먼트의 (셀좌표) -> [seg index list] 인덱스를 미리 만든다.
+        한 세그먼트가 걸친 모든 셀에 등록 (Bresenham 비슷한 cell-by-cell)."""
+        grid: dict = {}
+        if seg_a.shape[0] == 0:
+            return grid
+        for i in range(seg_a.shape[0]):
+            ax, ay = float(seg_a[i, 0]), float(seg_a[i, 1])
+            bx, by = float(seg_b[i, 0]), float(seg_b[i, 1])
+            x0, y0 = int(ax // cell), int(ay // cell)
+            x1, y1 = int(bx // cell), int(by // cell)
+            if x0 == x1 and y0 == y1:
+                grid.setdefault((x0, y0), []).append(i)
+                continue
+            dx = x1 - x0
+            dy = y1 - y0
+            steps = max(abs(dx), abs(dy))
+            for s in range(steps + 1):
+                t = s / steps
+                cx = int(round(x0 + dx * t))
+                cy = int(round(y0 + dy * t))
+                grid.setdefault((cx, cy), []).append(i)
+        for k in grid:
+            grid[k] = np.asarray(sorted(set(grid[k])), dtype=np.int32)
+        return grid
+
+    def _candidate_seg_indices(self, ox: float, oy: float, max_dist: float) -> np.ndarray:
+        """차량 주변 (반경 max_dist)에서 광선 후보가 될 수 있는 세그먼트 인덱스."""
+        grid = getattr(self, '_seg_grid', None)
+        if not grid:
+            return np.arange(self._seg_a.shape[0], dtype=np.int32)
+        cell = self._seg_cell_size
+        cx = int(ox // cell)
+        cy = int(oy // cell)
+        rng = int(math.ceil(max_dist / cell))
+        out = []
+        for dx in range(-rng, rng + 1):
+            for dy in range(-rng, rng + 1):
+                arr = grid.get((cx + dx, cy + dy))
+                if arr is not None:
+                    out.append(arr)
+        if not out:
+            return np.zeros(0, dtype=np.int32)
+        return np.unique(np.concatenate(out))
 
     # ----------------------------------------------------------
     # 신호등 업데이트
@@ -452,34 +509,120 @@ class RacingGame:
             return t
         return None
 
+    @staticmethod
+    def _ray_min_t_vec(ox: float, oy: float, dx: float, dy: float,
+                       ax: np.ndarray, ay: np.ndarray,
+                       bx: np.ndarray, by: np.ndarray,
+                       max_t: float) -> float:
+        """벡터화 광선-세그먼트 교차: N개 세그먼트 중 가장 가까운 t (없으면 max_t).
+        (수식은 _ray_segment_intersect와 동일)"""
+        if ax.shape[0] == 0:
+            return max_t
+        sx = bx - ax
+        sy = by - ay
+        denom = dx * sy - dy * sx
+        # denom == 0이면 평행 -> 무시
+        with np.errstate(divide='ignore', invalid='ignore'):
+            t = ((ax - ox) * sy - (ay - oy) * sx) / denom
+            s = ((ax - ox) * dy - (ay - oy) * dx) / denom
+        valid = (np.abs(denom) > 1e-10) & (t >= 0.0) & (s >= 0.0) & (s <= 1.0) & (t < max_t)
+        if not np.any(valid):
+            return max_t
+        return float(t[valid].min())
+
     def _cast_ray_for_car(self, car_idx: int, ox: float, oy: float, angle: float) -> float:
         """
-        car_idx 차량 기준 레이캐스팅.
+        car_idx 차량 기준 레이캐스팅 (NumPy 벡터화 + 공간 인덱스).
         차선 세그먼트 + 다른 차량의 bounding box 4변을 모두 장애물로 감지.
         반환: 정규화 거리 [0, 1]
         """
         car      = self.cars[car_idx]
         max_dist = car.sensor_range
         dx, dy   = math.cos(angle), math.sin(angle)
-        min_t    = max_dist
 
-        for (p1, p2) in self.lane_segments:
-            t = self._ray_segment_intersect(ox, oy, dx, dy, p1[0], p1[1], p2[0], p2[1])
-            if t is not None and t < min_t:
-                min_t = t
+        # 차선 세그먼트: 격자에서 후보만 추려 벡터화 교차
+        cand = self._candidate_seg_indices(ox, oy, max_dist)
+        if cand.size > 0:
+            ax = self._seg_a[cand, 0]
+            ay = self._seg_a[cand, 1]
+            bx = self._seg_b[cand, 0]
+            by = self._seg_b[cand, 1]
+            min_t = self._ray_min_t_vec(ox, oy, dx, dy, ax, ay, bx, by, max_dist)
+        else:
+            min_t = max_dist
 
-        for j, other in enumerate(self.cars):
-            if j == car_idx:
-                continue
-            corners = other.get_corners()
-            for k in range(4):
-                ax, ay = corners[k]
-                bx, by = corners[(k + 1) % 4]
-                t = self._ray_segment_intersect(ox, oy, dx, dy, ax, ay, bx, by)
-                if t is not None and t < min_t:
-                    min_t = t
+        # 다른 차량의 4변 (개수 적어 NumPy 한 번으로 묶음)
+        if len(self.cars) > 1:
+            edges_a = []
+            edges_b = []
+            for j, other in enumerate(self.cars):
+                if j == car_idx:
+                    continue
+                corners = other.get_corners()
+                for k in range(4):
+                    edges_a.append(corners[k])
+                    edges_b.append(corners[(k + 1) % 4])
+            if edges_a:
+                eA = np.asarray(edges_a, dtype=np.float32)
+                eB = np.asarray(edges_b, dtype=np.float32)
+                t_other = self._ray_min_t_vec(
+                    ox, oy, dx, dy, eA[:, 0], eA[:, 1], eB[:, 0], eB[:, 1], min_t)
+                if t_other < min_t:
+                    min_t = t_other
 
         return min_t / max_dist
+
+    def _cast_rays_for_car(self, car_idx: int, ox: float, oy: float, angles) -> list:
+        """
+        car_idx 차량 기준 여러 방향 레이캐스팅.
+        같은 위치에서 쏘는 ray들은 차선 후보와 다른 차량 bbox를 공유하므로
+        한 번만 준비하고 방향별 교차만 반복한다.
+        """
+        car      = self.cars[car_idx]
+        max_dist = car.sensor_range
+
+        cand = self._candidate_seg_indices(ox, oy, max_dist)
+        if cand.size > 0:
+            seg_ax = self._seg_a[cand, 0]
+            seg_ay = self._seg_a[cand, 1]
+            seg_bx = self._seg_b[cand, 0]
+            seg_by = self._seg_b[cand, 1]
+        else:
+            seg_ax = seg_ay = seg_bx = seg_by = None
+
+        edge_ax = edge_ay = edge_bx = edge_by = None
+        if len(self.cars) > 1:
+            edges_a = []
+            edges_b = []
+            for j, other in enumerate(self.cars):
+                if j == car_idx:
+                    continue
+                corners = other.get_corners()
+                for k in range(4):
+                    edges_a.append(corners[k])
+                    edges_b.append(corners[(k + 1) % 4])
+            if edges_a:
+                eA = np.asarray(edges_a, dtype=np.float32)
+                eB = np.asarray(edges_b, dtype=np.float32)
+                edge_ax, edge_ay = eA[:, 0], eA[:, 1]
+                edge_bx, edge_by = eB[:, 0], eB[:, 1]
+
+        out = []
+        for angle in angles:
+            dx, dy = math.cos(angle), math.sin(angle)
+            if seg_ax is not None:
+                min_t = self._ray_min_t_vec(
+                    ox, oy, dx, dy, seg_ax, seg_ay, seg_bx, seg_by, max_dist)
+            else:
+                min_t = max_dist
+
+            if edge_ax is not None:
+                t_other = self._ray_min_t_vec(
+                    ox, oy, dx, dy, edge_ax, edge_ay, edge_bx, edge_by, min_t)
+                if t_other < min_t:
+                    min_t = t_other
+            out.append(min_t / max_dist)
+        return out
 
     def _cast_ray(self, ox: float, oy: float, angle: float) -> float:
         """하위 호환: car 0 기준"""
