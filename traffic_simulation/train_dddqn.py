@@ -525,188 +525,200 @@ def _worker_segment_idx(agent, processed_count):
 
 
 def _rollout_worker_main(worker_id, cmd_q, result_q, config, snapshots, epsilon_tables):
-    random.seed(config['seed'] + worker_id)
-    np.random.seed(config['seed'] + worker_id)
-    pygame.init()
+    try:
+        random.seed(config['seed'] + worker_id)
+        np.random.seed(config['seed'] + worker_id)
+        pygame.init()
 
-    stage_id = config['stage_id']
-    active_paths = list(config['active_paths'])
-    n = len(active_paths)
-    game = RacingGame(config['track_file'], vehicle_configs=active_paths, headless=True)
-    agents = _build_worker_agents(
-        n, snapshots, epsilon_tables,
-        config['action_size'], config['duration_size'],
-        config['lr'], config['layer_num'], config['max_size'],
-    )
-    env_state = _worker_new_env_state(game, n, agents)
+        stage_id = config['stage_id']
+        active_paths = list(config['active_paths'])
+        n = len(active_paths)
+        game = RacingGame(config['track_file'], vehicle_configs=active_paths, headless=True)
+        agents = _build_worker_agents(
+            n, snapshots, epsilon_tables,
+            config['action_size'], config['duration_size'],
+            config['lr'], config['layer_num'], config['max_size'],
+        )
+        env_state = _worker_new_env_state(game, n, agents)
 
-    transitions = []
-    decay_events = []
-    episodes = []
-    steps_since_send = 0
-    chunk_steps = max(int(config.get('rollout_chunk_steps', 32)), 1)
-    max_time = config['max_time']
+        transitions = []
+        decay_events = []
+        episodes = []
+        steps_since_send = 0
+        chunk_steps = max(int(config.get('rollout_chunk_steps', 32)), 1)
+        max_time = config['max_time']
 
-    while True:
-        try:
-            while True:
-                cmd = cmd_q.get_nowait()
-                kind = cmd.get('type')
-                if kind == 'stop':
-                    return
-                if kind == 'sync':
-                    snapshots = cmd['snapshots']
-                    epsilon_tables = cmd['epsilon_tables']
-                    for i, agent in enumerate(agents):
-                        agent.model.load_state_dict(snapshots[i])
-                        agent.model.eval()
-                        agent.epsilon_table = list(epsilon_tables[i])
-                        agent.epsilon = agent.epsilon_table[0] if agent.epsilon_table else agent.epsilon
-                elif kind == 'stage':
-                    stage_id = cmd['stage_id']
-                    active_paths = list(cmd['active_paths'])
-                    n = len(active_paths)
-                    snapshots = cmd['snapshots']
-                    epsilon_tables = cmd['epsilon_tables']
-                    game = RacingGame(config['track_file'], vehicle_configs=active_paths, headless=True)
-                    agents = _build_worker_agents(
-                        n, snapshots, epsilon_tables,
-                        config['action_size'], config['duration_size'],
-                        config['lr'], config['layer_num'], config['max_size'],
-                    )
-                    env_state = _worker_new_env_state(game, n, agents)
-                    transitions = []
-                    decay_events = []
-                    episodes = []
-                    steps_since_send = 0
-        except pyqueue.Empty:
-            pass
+        while True:
+            # Apply pending learner commands without blocking rollout.
+            try:
+                while True:
+                    cmd = cmd_q.get_nowait()
+                    kind = cmd.get('type')
+                    if kind == 'stop':
+                        return
+                    if kind == 'sync':
+                        snapshots = cmd['snapshots']
+                        epsilon_tables = cmd['epsilon_tables']
+                        for i, agent in enumerate(agents):
+                            agent.model.load_state_dict(snapshots[i])
+                            agent.model.eval()
+                            agent.epsilon_table = list(epsilon_tables[i])
+                            agent.epsilon = agent.epsilon_table[0] if agent.epsilon_table else agent.epsilon
+                    elif kind == 'stage':
+                        stage_id = cmd['stage_id']
+                        active_paths = list(cmd['active_paths'])
+                        n = len(active_paths)
+                        snapshots = cmd['snapshots']
+                        epsilon_tables = cmd['epsilon_tables']
+                        game = RacingGame(config['track_file'], vehicle_configs=active_paths, headless=True)
+                        agents = _build_worker_agents(
+                            n, snapshots, epsilon_tables,
+                            config['action_size'], config['duration_size'],
+                            config['lr'], config['layer_num'], config['max_size'],
+                        )
+                        env_state = _worker_new_env_state(game, n, agents)
+                        transitions = []
+                        decay_events = []
+                        episodes = []
+                        steps_since_send = 0
+            except pyqueue.Empty:
+                pass
 
-        standard_cps = env_state['standard_cps']
-        dis_gaps = env_state['dis_gaps']
-        remaining_frames = env_state['remaining_frames']
-        pending_states = env_state['pending_states']
-        pending_actions = env_state['pending_actions']
-        pending_dur_idxs = env_state['pending_dur_idxs']
-        accumulated_rews = env_state['accumulated_rews']
-        processed_cp_cnts = env_state['processed_cp_cnts']
-        current_controls = env_state['current_controls']
-        active = env_state['active']
-        ep_rew_buf = env_state['ep_rew_buf']
-        ep_done_reason = env_state['ep_done_reason']
-        ep_cp_reached = env_state['ep_cp_reached']
+            standard_cps = env_state['standard_cps']
+            dis_gaps = env_state['dis_gaps']
+            remaining_frames = env_state['remaining_frames']
+            pending_states = env_state['pending_states']
+            pending_actions = env_state['pending_actions']
+            pending_dur_idxs = env_state['pending_dur_idxs']
+            accumulated_rews = env_state['accumulated_rews']
+            processed_cp_cnts = env_state['processed_cp_cnts']
+            current_controls = env_state['current_controls']
+            active = env_state['active']
+            ep_rew_buf = env_state['ep_rew_buf']
+            ep_done_reason = env_state['ep_done_reason']
+            ep_cp_reached = env_state['ep_cp_reached']
 
-        for i in range(n):
-            if remaining_frames[i] <= 0 and active[i]:
-                state = get_data(game, i, standard_cps[i], dis_gaps[i])
-                if pending_states[i] is not None:
+            for i in range(n):
+                if remaining_frames[i] <= 0 and active[i]:
+                    state = get_data(game, i, standard_cps[i], dis_gaps[i])
+                    if pending_states[i] is not None:
+                        transitions.append((
+                            i, pending_states[i], pending_actions[i], pending_dur_idxs[i],
+                            accumulated_rews[i], state, 0.0,
+                        ))
+                        ep_rew_buf[i] += accumulated_rews[i]
+                        accumulated_rews[i] = 0.0
+
+                    seg_idx = _worker_segment_idx(agents[i], processed_cp_cnts[i])
+                    _, _, action, dur_idx, duration = agents[i].predict(state, segment_idx=seg_idx)
+                    pending_states[i] = state
+                    pending_actions[i] = action
+                    pending_dur_idxs[i] = dur_idx
+                    current_controls[i] = agents[i].get_real_action(action)
+                    remaining_frames[i] = duration
+
+            prev_dists = [
+                math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
+                if active[i] else 0.0
+                for i in range(n)
+            ]
+            results = game.step(current_controls)
+            steps_since_send += 1
+
+            for i, result in enumerate(results):
+                if not active[i]:
+                    continue
+
+                cp_r = 0
+                curr_dist = math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
+                if result['cp_reached']:
+                    cp_r = 100
+                    ep_cp_reached[i] += 1
+                    completed_seg_idx = _worker_segment_idx(agents[i], processed_cp_cnts[i])
+                    agents[i].decay_epsilon(completed_seg_idx)
+                    decay_events.append((i, completed_seg_idx))
+                    processed_cp_cnts[i] += 1
+                    nav_cps = game.car_checkpoints[i]
+                    new_target = (nav_cps[processed_cp_cnts[i]]
+                                  if processed_cp_cnts[i] < len(nav_cps)
+                                  else game.car_goals[i])
+                    if new_target:
+                        dis_gaps[i] = math.dist(standard_cps[i], new_target)
+                        standard_cps[i] = list(new_target)
+
+                reward_features = get_reward_features(game, i)
+                is_timeout = (game.current_time or 0) / 1000 > max_time
+                frame_reward = get_frame_reward_from_features(
+                    reward_features,
+                    result['collision'], result['goal_reached'],
+                    curr_dist, game.current_time or 0, max_time,
+                    cp_r, dis_gaps[i], pending_actions[i],
+                    game.cars[i].max_speed, prev_dists[i],
+                )
+                if result['red_light_crossed'] and not result['red_light_right_turn']:
+                    frame_reward -= 50.0
+                if is_timeout:
+                    frame_reward -= 50.0
+
+                accumulated_rews[i] += frame_reward
+                remaining_frames[i] -= 1
+
+                done_i = result['collision'] or result['goal_reached'] or is_timeout
+                if done_i:
+                    terminal_seg_idx = _worker_segment_idx(agents[i], processed_cp_cnts[i])
+                    agents[i].decay_epsilon(terminal_seg_idx)
+                    decay_events.append((i, terminal_seg_idx))
+                    next_state = get_data(game, i, standard_cps[i], dis_gaps[i])
                     transitions.append((
                         i, pending_states[i], pending_actions[i], pending_dur_idxs[i],
-                        accumulated_rews[i], state, 0.0,
+                        accumulated_rews[i], next_state, 1.0,
                     ))
                     ep_rew_buf[i] += accumulated_rews[i]
                     accumulated_rews[i] = 0.0
+                    pending_states[i] = None
+                    active[i] = False
 
-                seg_idx = _worker_segment_idx(agents[i], processed_cp_cnts[i])
-                _, _, action, dur_idx, duration = agents[i].predict(state, segment_idx=seg_idx)
-                pending_states[i] = state
-                pending_actions[i] = action
-                pending_dur_idxs[i] = dur_idx
-                current_controls[i] = agents[i].get_real_action(action)
-                remaining_frames[i] = duration
+                    if result['goal_reached']:
+                        ep_done_reason[i] = 'goal'
+                    elif result['collision']:
+                        ep_done_reason[i] = 'collision'
+                    else:
+                        ep_done_reason[i] = 'timeout'
 
-        prev_dists = [
-            math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
-            if active[i] else 0.0
-            for i in range(n)
-        ]
-        results = game.step(current_controls)
-        steps_since_send += 1
+            if not any(active):
+                episodes.append({
+                    'worker_id': worker_id,
+                    'rewards': list(ep_rew_buf),
+                    'done_reasons': list(ep_done_reason),
+                    'cp_reached': list(ep_cp_reached),
+                })
+                game.reset()
+                env_state = _worker_new_env_state(game, n, agents)
 
-        for i, result in enumerate(results):
-            if not active[i]:
-                continue
-
-            cp_r = 0
-            curr_dist = math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
-            if result['cp_reached']:
-                cp_r = 100
-                ep_cp_reached[i] += 1
-                completed_seg_idx = _worker_segment_idx(agents[i], processed_cp_cnts[i])
-                agents[i].decay_epsilon(completed_seg_idx)
-                decay_events.append((i, completed_seg_idx))
-                processed_cp_cnts[i] += 1
-                nav_cps = game.car_checkpoints[i]
-                new_target = (nav_cps[processed_cp_cnts[i]]
-                              if processed_cp_cnts[i] < len(nav_cps)
-                              else game.car_goals[i])
-                if new_target:
-                    dis_gaps[i] = math.dist(standard_cps[i], new_target)
-                    standard_cps[i] = list(new_target)
-
-            reward_features = get_reward_features(game, i)
-            is_timeout = (game.current_time or 0) / 1000 > max_time
-            frame_reward = get_frame_reward_from_features(
-                reward_features,
-                result['collision'], result['goal_reached'],
-                curr_dist, game.current_time or 0, max_time,
-                cp_r, dis_gaps[i], pending_actions[i],
-                game.cars[i].max_speed, prev_dists[i],
-            )
-            if result['red_light_crossed'] and not result['red_light_right_turn']:
-                frame_reward -= 50.0
-            if is_timeout:
-                frame_reward -= 50.0
-
-            accumulated_rews[i] += frame_reward
-            remaining_frames[i] -= 1
-
-            done_i = result['collision'] or result['goal_reached'] or is_timeout
-            if done_i:
-                terminal_seg_idx = _worker_segment_idx(agents[i], processed_cp_cnts[i])
-                agents[i].decay_epsilon(terminal_seg_idx)
-                decay_events.append((i, terminal_seg_idx))
-                next_state = get_data(game, i, standard_cps[i], dis_gaps[i])
-                transitions.append((
-                    i, pending_states[i], pending_actions[i], pending_dur_idxs[i],
-                    accumulated_rews[i], next_state, 1.0,
-                ))
-                ep_rew_buf[i] += accumulated_rews[i]
-                accumulated_rews[i] = 0.0
-                pending_states[i] = None
-                active[i] = False
-
-                if result['goal_reached']:
-                    ep_done_reason[i] = 'goal'
-                elif result['collision']:
-                    ep_done_reason[i] = 'collision'
-                else:
-                    ep_done_reason[i] = 'timeout'
-
-        if not any(active):
-            episodes.append({
-                'worker_id': worker_id,
-                'rewards': list(ep_rew_buf),
-                'done_reasons': list(ep_done_reason),
-                'cp_reached': list(ep_cp_reached),
-            })
-            game.reset()
-            env_state = _worker_new_env_state(game, n, agents)
-
-        if transitions or decay_events or episodes or steps_since_send >= chunk_steps:
+            if transitions or decay_events or episodes or steps_since_send >= chunk_steps:
+                result_q.put({
+                    'type': 'rollout',
+                    'stage_id': stage_id,
+                    'worker_id': worker_id,
+                    'steps': steps_since_send,
+                    'transitions': transitions,
+                    'decay_events': decay_events,
+                    'episodes': episodes,
+                })
+                transitions = []
+                decay_events = []
+                episodes = []
+                steps_since_send = 0
+    except Exception as exc:
+        try:
             result_q.put({
-                'type': 'rollout',
-                'stage_id': stage_id,
+                'type': 'worker_error',
+                'stage_id': config.get('stage_id', -1),
                 'worker_id': worker_id,
-                'steps': steps_since_send,
-                'transitions': transitions,
-                'decay_events': decay_events,
-                'episodes': episodes,
+                'error': repr(exc),
             })
-            transitions = []
-            decay_events = []
-            episodes = []
-            steps_since_send = 0
+        finally:
+            raise
 
 
 def _run_greedy_evaluation(eval_game, agents, n, eval_trials, eval_max_time):
@@ -887,6 +899,7 @@ def train_headless_parallel(vehicle_config_paths,
     ]
     for p in workers:
         p.start()
+    log("  Workers started: " + " ".join(str(p.pid) for p in workers))
 
     episode = 0
     action_step = 0
@@ -908,6 +921,7 @@ def train_headless_parallel(vehicle_config_paths,
     best_eval_paths = [None] * n
     start_time = time.time()
     last_log_time = start_time
+    last_wait_log_time = start_time
 
     def broadcast(kind='sync'):
         payload = {
@@ -922,7 +936,24 @@ def train_headless_parallel(vehicle_config_paths,
 
     try:
         while episode < max_episode:
-            msg = result_q.get()
+            try:
+                msg = result_q.get(timeout=5.0)
+            except pyqueue.Empty:
+                dead = [(idx, p.exitcode) for idx, p in enumerate(workers) if not p.is_alive()]
+                if dead:
+                    raise RuntimeError(f"Parallel rollout worker(s) exited before sending data: {dead}")
+                now = time.time()
+                if now - last_wait_log_time >= 30:
+                    alive = sum(1 for p in workers if p.is_alive())
+                    log(f"  [Parallel] waiting for rollout data... "
+                        f"alive_workers={alive}/{parallel_workers}, "
+                        f"steps={action_step}, episodes={episode}")
+                    last_wait_log_time = now
+                continue
+            if msg.get('type') == 'worker_error':
+                raise RuntimeError(
+                    f"Parallel rollout worker {msg.get('worker_id')} failed: {msg.get('error')}"
+                )
             if msg.get('stage_id') != stage_id:
                 continue
 
@@ -1757,7 +1788,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval_max_time", type=int,   default=60)
     parser.add_argument("--num_envs",       type=int,   default=1,
                         help="한 프로세스 안에서 순차 rollout할 RacingGame 환경 수")
-    parser.add_argument("--parallel_workers", type=int, default=0,
+    parser.add_argument("--parallel_workers", type=int, default=4,
                         help="multiprocessing rollout worker 수. 0이면 기존 단일 프로세스 경로 사용")
     parser.add_argument("--rollout_chunk_steps", type=int, default=32,
                         help="parallel worker가 learner로 전송하기 전 모을 최대 환경 step 수")
