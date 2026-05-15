@@ -943,6 +943,7 @@ def train_headless_parallel(vehicle_config_paths,
     start_time = time.time()
     last_log_time = start_time
     last_wait_log_time = start_time
+    last_progress_log_time = start_time
 
     def broadcast(kind='sync'):
         payload = {
@@ -989,6 +990,15 @@ def train_headless_parallel(vehicle_config_paths,
 
             for agent_idx, state, action, dur_idx, reward, next_state, done in msg.get('transitions', []):
                 agents[agent_idx].add_memory([state, action, dur_idx, reward, next_state, done])
+
+            now = time.time()
+            if now - last_progress_log_time >= 30:
+                mem_str = " ".join(
+                    f"A{i+1}:{len(agents[i].replay_memory)}" for i in range(n)
+                )
+                log(f"  [Parallel] progress steps={action_step}, episodes={episode}, "
+                    f"replay=[{mem_str}]")
+                last_progress_log_time = now
 
             for agent_idx, seg_idx in msg.get('decay_events', []):
                 agents[agent_idx].decay_epsilon(seg_idx)
