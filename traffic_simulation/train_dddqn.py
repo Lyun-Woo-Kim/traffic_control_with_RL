@@ -13,6 +13,8 @@ import numpy as np
 import copy
 import time
 import os
+import multiprocessing as mp
+import queue as pyqueue
 
 import torch
 import torch.nn as nn
@@ -340,8 +342,8 @@ class NumpyReplayBuffer:
 class DuelingDoubleDQN_DualHead:
     def __init__(self, input_size=INPUT_SIZE, action_size=8, duration_size=20,
                  replay_memory_length=100000,
-                 lr=0.0001, layer_num=3, max_size=512):
-        self.device        = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                 lr=0.0001, layer_num=3, max_size=512, device=None):
+        self.device        = torch.device(device) if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.action_size   = action_size
         self.duration_size = duration_size
         self.input_size    = input_size
@@ -447,6 +449,707 @@ class DuelingDoubleDQN_DualHead:
         total_loss.backward()
         self.optimizer.step()
         return total_loss.item(), a_loss.item(), d_loss.item()
+
+
+# ============================================================
+# 병렬 rollout worker 유틸리티
+# ============================================================
+def _cpu_state_dict(model):
+    return {k: v.detach().cpu() for k, v in model.state_dict().items()}
+
+
+def _agent_snapshots(agents):
+    return [_cpu_state_dict(agent.model) for agent in agents]
+
+
+def _epsilon_tables(agents):
+    return [list(agent.epsilon_table) for agent in agents]
+
+
+def _build_worker_agents(n, snapshots, epsilon_tables,
+                         action_size, duration_size, lr, layer_num, max_size):
+    agents = [
+        DuelingDoubleDQN_DualHead(
+            INPUT_SIZE, action_size, duration_size,
+            replay_memory_length=1,
+            lr=lr, layer_num=layer_num, max_size=max_size,
+            device="cpu",
+        )
+        for _ in range(n)
+    ]
+    for i, agent in enumerate(agents):
+        agent.model.load_state_dict(snapshots[i])
+        agent.model.eval()
+        agent.epsilon_table = list(epsilon_tables[i])
+        agent.epsilon = agent.epsilon_table[0] if agent.epsilon_table else agent.epsilon
+    return agents
+
+
+def _worker_reset_episode_state(game, n):
+    std_cps = []
+    dis_gps = []
+    for i in range(n):
+        nav_cps = game.car_checkpoints[i]
+        cj = game.car_jsons[i]
+        sp_idx = cj.get('start_point', i % max(len(game.start_positions), 1))
+        sp = (game.start_positions[sp_idx % len(game.start_positions)]
+              if game.start_positions else [game.width // 2, game.height // 2])
+        first = nav_cps[0] if nav_cps else game.car_goals[i]
+        std_cps.append(list(first) if first else [sp[0], sp[1]])
+        dis_gps.append(math.dist(sp, first) if first else 1.0)
+    return std_cps, dis_gps
+
+
+def _worker_new_env_state(game, n, agents):
+    standard_cps, dis_gaps = _worker_reset_episode_state(game, n)
+    return {
+        'standard_cps': standard_cps,
+        'dis_gaps': dis_gaps,
+        'remaining_frames': [0] * n,
+        'pending_states': [None] * n,
+        'pending_actions': [0] * n,
+        'pending_dur_idxs': [0] * n,
+        'accumulated_rews': [0.0] * n,
+        'processed_cp_cnts': [0] * n,
+        'current_controls': [agents[i].get_real_action(0) for i in range(n)],
+        'active': [True] * n,
+        'ep_rew_buf': [0.0] * n,
+        'ep_done_reason': [''] * n,
+        'ep_cp_reached': [0] * n,
+    }
+
+
+def _worker_segment_idx(agent, processed_count):
+    segment_count = max(len(agent.epsilon_table), 1)
+    return min(processed_count, segment_count - 1)
+
+
+def _rollout_worker_main(worker_id, cmd_q, result_q, config, snapshots, epsilon_tables):
+    random.seed(config['seed'] + worker_id)
+    np.random.seed(config['seed'] + worker_id)
+    pygame.init()
+
+    stage_id = config['stage_id']
+    active_paths = list(config['active_paths'])
+    n = len(active_paths)
+    game = RacingGame(config['track_file'], vehicle_configs=active_paths, headless=True)
+    agents = _build_worker_agents(
+        n, snapshots, epsilon_tables,
+        config['action_size'], config['duration_size'],
+        config['lr'], config['layer_num'], config['max_size'],
+    )
+    env_state = _worker_new_env_state(game, n, agents)
+
+    transitions = []
+    decay_events = []
+    episodes = []
+    steps_since_send = 0
+    chunk_steps = max(int(config.get('rollout_chunk_steps', 32)), 1)
+    max_time = config['max_time']
+
+    while True:
+        try:
+            while True:
+                cmd = cmd_q.get_nowait()
+                kind = cmd.get('type')
+                if kind == 'stop':
+                    return
+                if kind == 'sync':
+                    snapshots = cmd['snapshots']
+                    epsilon_tables = cmd['epsilon_tables']
+                    for i, agent in enumerate(agents):
+                        agent.model.load_state_dict(snapshots[i])
+                        agent.model.eval()
+                        agent.epsilon_table = list(epsilon_tables[i])
+                        agent.epsilon = agent.epsilon_table[0] if agent.epsilon_table else agent.epsilon
+                elif kind == 'stage':
+                    stage_id = cmd['stage_id']
+                    active_paths = list(cmd['active_paths'])
+                    n = len(active_paths)
+                    snapshots = cmd['snapshots']
+                    epsilon_tables = cmd['epsilon_tables']
+                    game = RacingGame(config['track_file'], vehicle_configs=active_paths, headless=True)
+                    agents = _build_worker_agents(
+                        n, snapshots, epsilon_tables,
+                        config['action_size'], config['duration_size'],
+                        config['lr'], config['layer_num'], config['max_size'],
+                    )
+                    env_state = _worker_new_env_state(game, n, agents)
+                    transitions = []
+                    decay_events = []
+                    episodes = []
+                    steps_since_send = 0
+        except pyqueue.Empty:
+            pass
+
+        standard_cps = env_state['standard_cps']
+        dis_gaps = env_state['dis_gaps']
+        remaining_frames = env_state['remaining_frames']
+        pending_states = env_state['pending_states']
+        pending_actions = env_state['pending_actions']
+        pending_dur_idxs = env_state['pending_dur_idxs']
+        accumulated_rews = env_state['accumulated_rews']
+        processed_cp_cnts = env_state['processed_cp_cnts']
+        current_controls = env_state['current_controls']
+        active = env_state['active']
+        ep_rew_buf = env_state['ep_rew_buf']
+        ep_done_reason = env_state['ep_done_reason']
+        ep_cp_reached = env_state['ep_cp_reached']
+
+        for i in range(n):
+            if remaining_frames[i] <= 0 and active[i]:
+                state = get_data(game, i, standard_cps[i], dis_gaps[i])
+                if pending_states[i] is not None:
+                    transitions.append((
+                        i, pending_states[i], pending_actions[i], pending_dur_idxs[i],
+                        accumulated_rews[i], state, 0.0,
+                    ))
+                    ep_rew_buf[i] += accumulated_rews[i]
+                    accumulated_rews[i] = 0.0
+
+                seg_idx = _worker_segment_idx(agents[i], processed_cp_cnts[i])
+                _, _, action, dur_idx, duration = agents[i].predict(state, segment_idx=seg_idx)
+                pending_states[i] = state
+                pending_actions[i] = action
+                pending_dur_idxs[i] = dur_idx
+                current_controls[i] = agents[i].get_real_action(action)
+                remaining_frames[i] = duration
+
+        prev_dists = [
+            math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
+            if active[i] else 0.0
+            for i in range(n)
+        ]
+        results = game.step(current_controls)
+        steps_since_send += 1
+
+        for i, result in enumerate(results):
+            if not active[i]:
+                continue
+
+            cp_r = 0
+            curr_dist = math.dist([game.cars[i].x, game.cars[i].y], standard_cps[i])
+            if result['cp_reached']:
+                cp_r = 100
+                ep_cp_reached[i] += 1
+                completed_seg_idx = _worker_segment_idx(agents[i], processed_cp_cnts[i])
+                agents[i].decay_epsilon(completed_seg_idx)
+                decay_events.append((i, completed_seg_idx))
+                processed_cp_cnts[i] += 1
+                nav_cps = game.car_checkpoints[i]
+                new_target = (nav_cps[processed_cp_cnts[i]]
+                              if processed_cp_cnts[i] < len(nav_cps)
+                              else game.car_goals[i])
+                if new_target:
+                    dis_gaps[i] = math.dist(standard_cps[i], new_target)
+                    standard_cps[i] = list(new_target)
+
+            reward_features = get_reward_features(game, i)
+            is_timeout = (game.current_time or 0) / 1000 > max_time
+            frame_reward = get_frame_reward_from_features(
+                reward_features,
+                result['collision'], result['goal_reached'],
+                curr_dist, game.current_time or 0, max_time,
+                cp_r, dis_gaps[i], pending_actions[i],
+                game.cars[i].max_speed, prev_dists[i],
+            )
+            if result['red_light_crossed'] and not result['red_light_right_turn']:
+                frame_reward -= 50.0
+            if is_timeout:
+                frame_reward -= 50.0
+
+            accumulated_rews[i] += frame_reward
+            remaining_frames[i] -= 1
+
+            done_i = result['collision'] or result['goal_reached'] or is_timeout
+            if done_i:
+                terminal_seg_idx = _worker_segment_idx(agents[i], processed_cp_cnts[i])
+                agents[i].decay_epsilon(terminal_seg_idx)
+                decay_events.append((i, terminal_seg_idx))
+                next_state = get_data(game, i, standard_cps[i], dis_gaps[i])
+                transitions.append((
+                    i, pending_states[i], pending_actions[i], pending_dur_idxs[i],
+                    accumulated_rews[i], next_state, 1.0,
+                ))
+                ep_rew_buf[i] += accumulated_rews[i]
+                accumulated_rews[i] = 0.0
+                pending_states[i] = None
+                active[i] = False
+
+                if result['goal_reached']:
+                    ep_done_reason[i] = 'goal'
+                elif result['collision']:
+                    ep_done_reason[i] = 'collision'
+                else:
+                    ep_done_reason[i] = 'timeout'
+
+        if not any(active):
+            episodes.append({
+                'worker_id': worker_id,
+                'rewards': list(ep_rew_buf),
+                'done_reasons': list(ep_done_reason),
+                'cp_reached': list(ep_cp_reached),
+            })
+            game.reset()
+            env_state = _worker_new_env_state(game, n, agents)
+
+        if transitions or decay_events or episodes or steps_since_send >= chunk_steps:
+            result_q.put({
+                'type': 'rollout',
+                'stage_id': stage_id,
+                'worker_id': worker_id,
+                'steps': steps_since_send,
+                'transitions': transitions,
+                'decay_events': decay_events,
+                'episodes': episodes,
+            })
+            transitions = []
+            decay_events = []
+            episodes = []
+            steps_since_send = 0
+
+
+def _run_greedy_evaluation(eval_game, agents, n, eval_trials, eval_max_time):
+    for i in range(n):
+        agents[i].model.eval()
+
+    eval_success = [0] * n
+    eval_times = [[] for _ in range(n)]
+
+    for _trial in range(eval_trials):
+        eval_game.reset()
+        _std_cps, _dis_gps = _worker_reset_episode_state(eval_game, n)
+        _rem = [0] * n
+        _ctrl = [agents[i].get_real_action(0) for i in range(n)]
+        _alive = [True] * n
+        _cp_c = [0] * n
+
+        while any(_alive):
+            for i in range(n):
+                if _rem[i] <= 0 and _alive[i]:
+                    st = get_data(eval_game, i, _std_cps[i], _dis_gps[i])
+                    _, _, a, d, dur = agents[i].predict(st, segment_idx=0, greedy=True)
+                    _ctrl[i] = agents[i].get_real_action(a)
+                    _rem[i] = dur
+
+            step_res = eval_game.step(_ctrl)
+
+            for i, res in enumerate(step_res):
+                if not _alive[i]:
+                    continue
+                _rem[i] -= 1
+                is_to = (eval_game.current_time or 0) / 1000 > eval_max_time
+
+                if res['cp_reached']:
+                    _cp_c[i] += 1
+                    nav_cps = eval_game.car_checkpoints[i]
+                    new_tgt = (nav_cps[_cp_c[i]]
+                               if _cp_c[i] < len(nav_cps)
+                               else eval_game.car_goals[i])
+                    if new_tgt:
+                        _dis_gps[i] = math.dist(_std_cps[i], new_tgt)
+                        _std_cps[i] = list(new_tgt)
+
+                if res['goal_reached'] or res['collision'] or is_to:
+                    if res['goal_reached']:
+                        eval_success[i] += 1
+                        eval_times[i].append((eval_game.current_time or 0) / 1000.0)
+                    _alive[i] = False
+
+    for i in range(n):
+        agents[i].model.train()
+
+    return eval_success, eval_times
+
+
+def train_headless_parallel(vehicle_config_paths,
+                            max_episode=300000,
+                            action_size=8, duration_size=6,
+                            replay_length=50000,
+                            target_update=2000,
+                            log_interval=100,
+                            batch_size=2048,
+                            track_file=None,
+                            layer_num=3, max_size=512, lr=0.0001,
+                            max_time=60,
+                            eval_interval=500,
+                            eval_trials=10,
+                            eval_max_time=60,
+                            curriculum=True,
+                            curriculum_perfect_evals_per_agent=10,
+                            curriculum_min_episodes_per_stage=0,
+                            curriculum_min_action_steps_per_stage=5000,
+                            parallel_workers=4,
+                            rollout_chunk_steps=32,
+                            train_every_steps=20,
+                            gradient_steps=1,
+                            sync_interval_steps=1000,
+                            seed=1234):
+    if track_file is None:
+        track_file = _sim_asset("track_data.json")
+
+    full_vehicle_paths = list(vehicle_config_paths)
+    use_curriculum = bool(curriculum) and len(full_vehicle_paths) > 1
+    active_paths = full_vehicle_paths[:1] if use_curriculum else full_vehicle_paths
+    parallel_workers = max(int(parallel_workers), 1)
+    train_every_steps = max(int(train_every_steps), 1)
+    gradient_steps = max(int(gradient_steps), 1)
+    sync_interval_steps = max(int(sync_interval_steps), 1)
+
+    pygame.init()
+    eval_game = RacingGame(track_file, vehicle_configs=active_paths, headless=True)
+    n = eval_game.n_agents
+
+    agents = [
+        DuelingDoubleDQN_DualHead(
+            INPUT_SIZE, action_size, duration_size,
+            replay_length, lr, layer_num, max_size,
+        )
+        for _ in range(n)
+    ]
+    target_nets = [
+        DuelingDoubleDQN_DualHead(
+            INPUT_SIZE, action_size, duration_size,
+            0, lr, layer_num, max_size,
+        )
+        for _ in range(n)
+    ]
+    for i in range(n):
+        seg_cnt = len(eval_game.car_checkpoints[i]) + (1 if eval_game.car_goals[i] is not None else 0)
+        agents[i].init_epsilon_table(seg_cnt)
+        target_nets[i].init_epsilon_table(seg_cnt)
+        target_nets[i].model.load_state_dict(agents[i].model.state_dict())
+        target_nets[i].model.eval()
+
+    save_dir = _SIM_DIR / "checkpoints"
+    save_dir.mkdir(exist_ok=True)
+    lr_str = str(lr).replace(".", "_")
+    run_tag = (f"par{parallel_workers}_curr_max{len(full_vehicle_paths)}_st{n}ag_lr_{lr_str}_"
+               f"L{layer_num}_S{max_size}") if use_curriculum else (
+                   f"par{parallel_workers}_ma_{n}agents_lr_{lr_str}_L{layer_num}_S{max_size}")
+    log_filename = str(save_dir / f"train_{run_tag}.txt")
+    log_file = open(log_filename, 'w', encoding='utf-8')
+    csv_filename = log_filename.replace('.txt', '_detail.csv')
+    csv_file = open(csv_filename, 'w', encoding='utf-8')
+
+    def log(msg):
+        ts = time.strftime('%Y-%m-%d %H:%M:%S')
+        line = f"[{ts}] {msg}\n"
+        log_file.write(line)
+        log_file.flush()
+        print(msg)
+
+    def write_csv_header():
+        csv_file.write(
+            'episode,worker_id,'
+            + ','.join(f'A{i+1}_reward,A{i+1}_done,A{i+1}_cp' for i in range(n))
+            + '\n'
+        )
+        csv_file.flush()
+
+    write_csv_header()
+
+    log("=" * 60)
+    log(f"PARALLEL DDDQN  |  workers={parallel_workers}  |  agents={n}"
+        + (f"  |  CURRICULUM → max {len(full_vehicle_paths)} vehicles" if use_curriculum else ""))
+    log(f"  Device : {agents[0].device}")
+    log(f"  Batch  : {batch_size}  | train_every_steps={train_every_steps} "
+        f"| gradient_steps={gradient_steps} | sync_interval_steps={sync_interval_steps}")
+    log(f"  Track  : {track_file}")
+    log("=" * 60)
+
+    ctx = mp.get_context("spawn")
+    result_q = ctx.Queue(maxsize=max(parallel_workers * 8, 16))
+    cmd_queues = [ctx.Queue() for _ in range(parallel_workers)]
+    stage_id = 0
+    worker_config = {
+        'track_file': track_file,
+        'active_paths': active_paths,
+        'stage_id': stage_id,
+        'action_size': action_size,
+        'duration_size': duration_size,
+        'lr': lr,
+        'layer_num': layer_num,
+        'max_size': max_size,
+        'max_time': max_time,
+        'rollout_chunk_steps': rollout_chunk_steps,
+        'seed': seed,
+    }
+    snapshots = _agent_snapshots(agents)
+    eps_tables = _epsilon_tables(agents)
+    workers = [
+        ctx.Process(
+            target=_rollout_worker_main,
+            args=(wid, cmd_queues[wid], result_q, worker_config, snapshots, eps_tables),
+            daemon=True,
+        )
+        for wid in range(parallel_workers)
+    ]
+    for p in workers:
+        p.start()
+
+    episode = 0
+    action_step = 0
+    next_train_step = train_every_steps
+    next_target_step = target_update
+    next_sync_step = sync_interval_steps
+    next_eval_episode = eval_interval
+    episodes_in_stage = 0
+    action_step_at_stage_start = 0
+    curriculum_eval_wins = [0] * n
+    goal_counts = [0] * n
+    ep_rewards = [[] for _ in range(n)]
+    action_losses = [[] for _ in range(n)]
+    duration_losses = [[] for _ in range(n)]
+    ep_collision_cnts = [0] * n
+    ep_timeout_cnts = [0] * n
+    ep_goal_cnts_ep = [0] * n
+    best_eval_times = [float('inf')] * n
+    best_eval_paths = [None] * n
+    start_time = time.time()
+    last_log_time = start_time
+
+    def broadcast(kind='sync'):
+        payload = {
+            'type': kind,
+            'stage_id': stage_id,
+            'active_paths': active_paths,
+            'snapshots': _agent_snapshots(agents),
+            'epsilon_tables': _epsilon_tables(agents),
+        }
+        for q in cmd_queues:
+            q.put(payload)
+
+    try:
+        while episode < max_episode:
+            msg = result_q.get()
+            if msg.get('stage_id') != stage_id:
+                continue
+
+            action_step += int(msg.get('steps', 0))
+
+            for agent_idx, state, action, dur_idx, reward, next_state, done in msg.get('transitions', []):
+                agents[agent_idx].add_memory([state, action, dur_idx, reward, next_state, done])
+
+            for agent_idx, seg_idx in msg.get('decay_events', []):
+                agents[agent_idx].decay_epsilon(seg_idx)
+
+            while action_step >= next_train_step:
+                for _ in range(gradient_steps):
+                    for i in range(n):
+                        if len(agents[i].replay_memory) > batch_size:
+                            tl, al, dl = agents[i].train_step(batch_size, target_nets[i])
+                            action_losses[i].append(al)
+                            duration_losses[i].append(dl)
+                next_train_step += train_every_steps
+
+            while action_step >= next_target_step:
+                for i in range(n):
+                    target_nets[i].model.load_state_dict(agents[i].model.state_dict())
+                    target_nets[i].model.eval()
+                next_target_step += target_update
+
+            if action_step >= next_sync_step:
+                broadcast('sync')
+                next_sync_step += sync_interval_steps
+
+            for ep in msg.get('episodes', []):
+                episode += 1
+                episodes_in_stage += 1
+                rewards = ep['rewards']
+                reasons = ep['done_reasons']
+                cps = ep['cp_reached']
+
+                for i in range(n):
+                    ep_rewards[i].append(rewards[i])
+                    if reasons[i] == 'goal':
+                        goal_counts[i] += 1
+                        ep_goal_cnts_ep[i] += 1
+                    elif reasons[i] == 'collision':
+                        ep_collision_cnts[i] += 1
+                    elif reasons[i] == 'timeout':
+                        ep_timeout_cnts[i] += 1
+
+                row = f"{episode},{ep['worker_id']}"
+                for i in range(n):
+                    row += f",{rewards[i]:.2f},{reasons[i]},{cps[i]}"
+                csv_file.write(row + '\n')
+                if episode % 10 == 0:
+                    csv_file.flush()
+
+                if episode % log_interval == 0:
+                    elapsed = time.time() - last_log_time
+                    eps_per_sec = log_interval / elapsed if elapsed > 0 else 0.0
+                    avg_rews = [
+                        np.mean(ep_rewards[i][-log_interval:]) if ep_rewards[i] else 0.0
+                        for i in range(n)
+                    ]
+                    avg_a_losses = [
+                        np.mean(action_losses[i][-100:]) if action_losses[i] else 0.0
+                        for i in range(n)
+                    ]
+                    col_rate = [ep_collision_cnts[i] / max(episode, 1) * 100 for i in range(n)]
+                    to_rate = [ep_timeout_cnts[i] / max(episode, 1) * 100 for i in range(n)]
+                    rew_str = " | ".join(f"A{i+1}:{avg_rews[i]:7.1f}" for i in range(n))
+                    loss_str = " | ".join(f"A{i+1}:{avg_a_losses[i]:.3f}" for i in range(n))
+                    goal_str = " ".join(f"A{i+1}:{goal_counts[i]}" for i in range(n))
+                    eps_str = " ".join(f"A{i+1}:S0={agents[i].get_segment_epsilon(0):.3f}" for i in range(n))
+                    col_str = " | ".join(f"A{i+1}:{col_rate[i]:.0f}%" for i in range(n))
+                    to_str = " | ".join(f"A{i+1}:{to_rate[i]:.0f}%" for i in range(n))
+                    log(f"[Ep {episode:5d}] Goals:[{goal_str}] | ε:[{eps_str}] | "
+                        f"Workers:{parallel_workers} | Reward:[{rew_str}] | "
+                        f"ALoss:[{loss_str}] | {eps_per_sec:.1f}ep/s | {time.strftime('%H:%M:%S')}")
+                    log(f"          Collision:[{col_str}] | Timeout:[{to_str}]")
+                    last_log_time = time.time()
+
+                if episode % 1000 == 0:
+                    for i in range(n):
+                        path = str(save_dir / f"agent{i+1}_ep{episode}_{run_tag}.pth")
+                        torch.save(agents[i].model.state_dict(), path)
+                    log(f"  [Ckpt] Ep{episode} 모델 저장 완료")
+
+                if episode >= next_eval_episode:
+                    log(f"  [Eval] Ep{episode} — {eval_trials}회 평가 시작 "
+                        f"(greedy, MaxT={eval_max_time}s) ...")
+                    eval_success, eval_times = _run_greedy_evaluation(
+                        eval_game, agents, n, eval_trials, eval_max_time)
+
+                    for i in range(n):
+                        sc = eval_success[i]
+                        if sc == eval_trials:
+                            avg_t = np.mean(eval_times[i])
+                            if avg_t < best_eval_times[i]:
+                                if best_eval_paths[i] and os.path.exists(best_eval_paths[i]):
+                                    os.remove(best_eval_paths[i])
+                                best_eval_times[i] = avg_t
+                                new_path = str(save_dir /
+                                               f"agent{i+1}_eval_best_{avg_t:.1f}s_{run_tag}.pth")
+                                torch.save(agents[i].model.state_dict(), new_path)
+                                best_eval_paths[i] = new_path
+                                log(f"  [Eval] Agent{i+1} ✓ {eval_trials}/{eval_trials} "
+                                    f"avg={avg_t:.1f}s  → saved  ({new_path})")
+                            else:
+                                log(f"  [Eval] Agent{i+1} ✓ {eval_trials}/{eval_trials} "
+                                    f"avg={avg_t:.1f}s  (best={best_eval_times[i]:.1f}s, skip)")
+                        else:
+                            log(f"  [Eval] Agent{i+1} ✗ {sc}/{eval_trials} success — skip")
+
+                    next_eval_episode += eval_interval
+
+                    steps_in_stage = action_step - action_step_at_stage_start
+                    mins_ok = (
+                        episodes_in_stage >= curriculum_min_episodes_per_stage
+                        and steps_in_stage >= curriculum_min_action_steps_per_stage
+                    )
+                    if use_curriculum and n < len(full_vehicle_paths):
+                        for ci in range(n):
+                            if eval_success[ci] == eval_trials:
+                                curriculum_eval_wins[ci] += 1
+                        wins_str = " ".join(
+                            f"A{ci+1}:{curriculum_eval_wins[ci]}/{curriculum_perfect_evals_per_agent}"
+                            for ci in range(n)
+                        )
+                        log(f"  [Curriculum] 완벽 평가 누적 ({wins_str})  |  "
+                            f"단계 ep={episodes_in_stage}, env_step={steps_in_stage}")
+
+                        all_agents_ready = all(
+                            curriculum_eval_wins[ci] >= curriculum_perfect_evals_per_agent
+                            for ci in range(n)
+                        )
+                        if all_agents_ready and mins_ok:
+                            old_n = n
+                            new_n = old_n + 1
+                            donor_sd = agents[old_n - 1].model.state_dict()
+                            active_paths = full_vehicle_paths[:new_n]
+                            eval_game = RacingGame(
+                                track_file, vehicle_configs=active_paths, headless=True)
+
+                            na = DuelingDoubleDQN_DualHead(
+                                INPUT_SIZE, action_size, duration_size,
+                                replay_length, lr, layer_num, max_size,
+                            )
+                            na.model.load_state_dict(donor_sd)
+                            seg_new = (len(eval_game.car_checkpoints[new_n - 1])
+                                       + (1 if eval_game.car_goals[new_n - 1] is not None else 0))
+                            na.init_epsilon_table(seg_new)
+                            agents.append(na)
+
+                            nt = DuelingDoubleDQN_DualHead(
+                                INPUT_SIZE, action_size, duration_size,
+                                0, lr, layer_num, max_size,
+                            )
+                            nt.init_epsilon_table(seg_new)
+                            nt.model.load_state_dict(na.model.state_dict())
+                            nt.model.eval()
+                            target_nets.append(nt)
+                            n = new_n
+
+                            for ai in range(n):
+                                seg_cnt = (len(eval_game.car_checkpoints[ai])
+                                           + (1 if eval_game.car_goals[ai] is not None else 0))
+                                agents[ai].epsilon = 1.0
+                                agents[ai].init_epsilon_table(seg_cnt)
+                                target_nets[ai].epsilon = 1.0
+                                target_nets[ai].init_epsilon_table(seg_cnt)
+
+                            run_tag = (f"par{parallel_workers}_curr_max{len(full_vehicle_paths)}_"
+                                       f"st{n}ag_lr_{lr_str}_L{layer_num}_S{max_size}")
+                            csv_file.close()
+                            csv_filename = str(save_dir / f"train_{run_tag}_detail.csv")
+                            csv_file = open(csv_filename, 'w', encoding='utf-8')
+                            write_csv_header()
+
+                            goal_counts.append(0)
+                            ep_rewards.append([])
+                            action_losses.append([])
+                            duration_losses.append([])
+                            ep_collision_cnts.append(0)
+                            ep_timeout_cnts.append(0)
+                            ep_goal_cnts_ep.append(0)
+                            best_eval_times.append(float('inf'))
+                            best_eval_paths.append(None)
+
+                            curriculum_eval_wins = [0] * n
+                            episodes_in_stage = 0
+                            action_step_at_stage_start = action_step
+                            stage_id += 1
+                            broadcast('stage')
+
+                            log("=" * 60)
+                            log(f"[Curriculum] 단계 상승: {old_n}대 → {new_n}대  |  "
+                                f"Agent{new_n} 초기 가중치 ← Agent{old_n} (직전 인덱스)")
+                            log(f"  Parallel workers reset: {parallel_workers}")
+                            ck_cur = str(save_dir / f"curriculum_{old_n}to{new_n}_ep{episode}_{run_tag}.pth")
+                            torch.save(donor_sd, ck_cur)
+                            log(f"  전이 소스 가중치 저장: {ck_cur}")
+                            log("=" * 60)
+
+    finally:
+        for q in cmd_queues:
+            q.put({'type': 'stop'})
+        for p in workers:
+            p.join(timeout=5)
+            if p.is_alive():
+                p.terminate()
+
+        total_time = time.time() - start_time
+        log("\n" + "=" * 60)
+        log("PARALLEL TRAINING COMPLETED")
+        log(f"  Total Episodes : {episode}")
+        log(f"  Total Goals    : {dict(enumerate(goal_counts, 1))}")
+        log(f"  Training Time  : {total_time/60:.1f} min")
+        log("=" * 60)
+
+        log_file.close()
+        csv_file.close()
+        pygame.quit()
+
+    for i in range(n):
+        path = str(save_dir / f"agent{i+1}_final_ep{episode}_{run_tag}.pth")
+        torch.save(agents[i].model.state_dict(), path)
+        print(f"  Saved: {path}")
+
+    return agents
 
 
 # ============================================================
@@ -1052,8 +1755,18 @@ if __name__ == "__main__":
     parser.add_argument("--eval_interval", type=int,   default=500)
     parser.add_argument("--eval_trials",   type=int,   default=10)
     parser.add_argument("--eval_max_time", type=int,   default=60)
-    parser.add_argument("--num_envs",       type=int,   default=4,
+    parser.add_argument("--num_envs",       type=int,   default=1,
                         help="한 프로세스 안에서 순차 rollout할 RacingGame 환경 수")
+    parser.add_argument("--parallel_workers", type=int, default=0,
+                        help="multiprocessing rollout worker 수. 0이면 기존 단일 프로세스 경로 사용")
+    parser.add_argument("--rollout_chunk_steps", type=int, default=32,
+                        help="parallel worker가 learner로 전송하기 전 모을 최대 환경 step 수")
+    parser.add_argument("--train_every_steps", type=int, default=20,
+                        help="parallel learner의 gradient update 주기(action_step 기준)")
+    parser.add_argument("--gradient_steps", type=int, default=1,
+                        help="parallel learner가 학습 타이밍마다 반복할 gradient step 수")
+    parser.add_argument("--sync_interval_steps", type=int, default=1000,
+                        help="parallel worker에 최신 모델/epsilon을 동기화하는 action_step 주기")
     parser.add_argument(
         "--curriculum",
         action="store_true",
@@ -1080,31 +1793,45 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    train_headless(
+    common_kwargs = dict(
         vehicle_config_paths=[
             _sim_asset("vehicles", "vehicle_1.json"),
             _sim_asset("vehicles", "vehicle_2.json"),
             _sim_asset("vehicles", "vehicle_3.json"),
             _sim_asset("vehicles", "vehicle_4.json"),
         ],
-        max_episode    = 90000,
-        action_size    = 8,
-        duration_size  = 6,
-        replay_length  = 50000,
-        target_update  = 2000,
-        log_interval   = 100,
-        layer_num      = args.layer_num,
-        max_size       = args.max_size,
-        lr             = args.lr,
-        batch_size     = args.batch_size,
-        track_file     = _sim_asset("track_data.json"),
-        max_time       = args.max_time,
-        eval_interval  = args.eval_interval,
-        eval_trials    = args.eval_trials,
-        eval_max_time  = args.eval_max_time,
-        num_envs       = args.num_envs,
+        max_episode=90000,
+        action_size=8,
+        duration_size=6,
+        replay_length=50000,
+        target_update=2000,
+        log_interval=100,
+        layer_num=args.layer_num,
+        max_size=args.max_size,
+        lr=args.lr,
+        batch_size=args.batch_size,
+        track_file=_sim_asset("track_data.json"),
+        max_time=args.max_time,
+        eval_interval=args.eval_interval,
+        eval_trials=args.eval_trials,
+        eval_max_time=args.eval_max_time,
         curriculum=args.curriculum,
         curriculum_perfect_evals_per_agent=args.curriculum_perfect_evals,
         curriculum_min_episodes_per_stage=args.curriculum_min_episodes,
         curriculum_min_action_steps_per_stage=args.curriculum_min_action_steps,
     )
+
+    if args.parallel_workers > 0:
+        train_headless_parallel(
+            **common_kwargs,
+            parallel_workers=args.parallel_workers,
+            rollout_chunk_steps=args.rollout_chunk_steps,
+            train_every_steps=args.train_every_steps,
+            gradient_steps=args.gradient_steps,
+            sync_interval_steps=args.sync_interval_steps,
+        )
+    else:
+        train_headless(
+            **common_kwargs,
+            num_envs=args.num_envs,
+        )
